@@ -2,7 +2,7 @@
 
 import { useState, useEffect, ReactNode } from 'react';
 import axios from 'axios';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { AuthContext, User, RegisterData, API_URL } from '@/lib/auth';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -11,10 +11,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
+  
+  // Check if this is an auth page
+  const isAuthPage = pathname?.startsWith('/login') || pathname?.startsWith('/register');
 
-  // Check for existing token and load user on mount
+  // Check for existing token and load user on mount, but only if not on auth pages
   useEffect(() => {
+    // Skip auto-login on auth pages to prevent hydration issues
+    if (isAuthPage) {
+      setLoading(false);
+      return;
+    }
+    
     const loadUser = async () => {
+      // Only access localStorage on the client side
+      if (typeof window === 'undefined') {
+        setLoading(false);
+        return;
+      }
+      
       const token = localStorage.getItem('token');
       
       if (!token) {
@@ -24,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       try {
         // Set default auth header for axios
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        axios.defaults.headers.common['Authorization'] = `Token ${token}`;
         
         // Fetch user data
         const response = await axios.get(`${API_URL}/api/users/me/`);
@@ -41,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     loadUser();
-  }, []);
+  }, [isAuthPage]);
 
   // Login function
   const login = async (username: string, password: string) => {
@@ -58,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Store token and set auth header
       localStorage.setItem('token', token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      axios.defaults.headers.common['Authorization'] = `Token ${token}`;
       
       // Fetch user data
       const userResponse = await axios.get(`${API_URL}/api/users/me/`);
@@ -101,7 +117,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Logout function
   const logout = () => {
-    localStorage.removeItem('token');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('token');
+    }
     delete axios.defaults.headers.common['Authorization'];
     setUser(null);
     setIsAuthenticated(false);
