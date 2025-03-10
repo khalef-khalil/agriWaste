@@ -24,6 +24,12 @@ class WasteListing(models.Model):
         ('DZ', 'Algeria'),
     )
     
+    CURRENCY_CHOICES = (
+        ('TND', 'Tunisian Dinar'),
+        ('LYD', 'Libyan Dinar'),
+        ('DZD', 'Algerian Dinar'),
+    )
+    
     seller = models.ForeignKey(User, on_delete=models.CASCADE, related_name='listings')
     waste_type = models.ForeignKey(WasteType, on_delete=models.CASCADE, related_name='listings')
     title = models.CharField(max_length=255)
@@ -31,6 +37,7 @@ class WasteListing(models.Model):
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
     unit = models.CharField(max_length=10, choices=QUANTITY_UNITS)
     price = models.DecimalField(max_digits=10, decimal_places=2)
+    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default='TND')
     location = models.CharField(max_length=255)
     country = models.CharField(max_length=2, choices=COUNTRY_CHOICES, default='TN')
     available_from = models.DateField()

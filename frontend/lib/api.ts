@@ -63,6 +63,7 @@ export interface Listing {
   description: string;
   price: number;
   price_unit: string;
+  currency: string;
   quantity: number;
   quantity_unit: string;
   waste_type: number;

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { marketplaceApi, Listing } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -98,11 +97,10 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
         >
           <div className="relative aspect-square overflow-hidden rounded-lg border bg-muted">
             {listing.images && listing.images.length > 0 ? (
-              <Image
+              <img
                 src={listing.images[activeImageIndex].image_url}
                 alt={listing.title}
-                fill
-                className="object-cover"
+                className="w-full h-full object-cover"
               />
             ) : (
               <div className="flex h-full items-center justify-center bg-muted">
@@ -121,11 +119,10 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
                   }`}
                   onClick={() => setActiveImageIndex(index)}
                 >
-                  <Image
+                  <img
                     src={image.image_url}
                     alt={`${listing.title} - Image ${index + 1}`}
-                    fill
-                    className="object-cover"
+                    className="w-full h-full object-cover"
                   />
                 </button>
               ))}
@@ -147,7 +144,7 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
               <span>{listing.location}, {listing.country}</span>
             </div>
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-2xl font-bold">{listing.price} {listing.price_unit}</span>
+              <span className="text-2xl font-bold">{listing.price} {listing.currency}</span>
             </div>
             <div className="flex items-center gap-6 text-sm">
               <div className="flex items-center gap-1">

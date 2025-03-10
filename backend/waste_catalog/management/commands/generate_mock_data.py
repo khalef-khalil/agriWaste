@@ -594,6 +594,14 @@ class Command(BaseCommand):
                     k=1
                 )[0]
                 
+                # Set currency based on country
+                currency_mapping = {
+                    'TN': 'TND',  # Tunisian Dinar
+                    'LY': 'LYD',  # Libyan Dinar
+                    'DZ': 'DZD',  # Algerian Dinar
+                }
+                currency = currency_mapping[country]
+                
                 # Select city based on country
                 if country == 'TN':
                     location = random.choice(cities[:5])
@@ -619,6 +627,7 @@ class Command(BaseCommand):
                     quantity=Decimal(random.randint(50, 5000)),
                     unit=unit,
                     price=Decimal(random.randint(min_price, max_price)),
+                    currency=currency,
                     location=location,
                     country=country,
                     available_from=available_from,

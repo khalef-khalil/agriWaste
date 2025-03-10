@@ -1,7 +1,6 @@
 "use client";
 
 import { motion } from "framer-motion";
-import Image from "next/image";
 import Link from "next/link";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { MapPin, Package } from "lucide-react";
@@ -17,11 +16,10 @@ export default function ListingCard({ listing }: ListingCardProps) {
       <Card className="overflow-hidden h-full transition-all hover:shadow-md group">
         <div className="relative h-48 w-full overflow-hidden">
           {listing.images && listing.images.length > 0 ? (
-            <Image
+            <img
               src={listing.images[0].image_url}
               alt={listing.title}
-              fill
-              className="object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
+              className="w-full h-full object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
             />
           ) : (
             <div className="flex h-full items-center justify-center bg-muted">
@@ -30,7 +28,7 @@ export default function ListingCard({ listing }: ListingCardProps) {
           )}
           <div className="absolute top-2 right-2">
             <span className="bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full">
-              {listing.price} {listing.price_unit}
+              {listing.price} {listing.currency}
             </span>
           </div>
           {!listing.is_active && (

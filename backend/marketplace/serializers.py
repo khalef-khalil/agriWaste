@@ -24,6 +24,7 @@ class WasteListingSerializer(serializers.ModelSerializer):
     seller_username = serializers.SerializerMethodField()
     waste_type_name = serializers.SerializerMethodField()
     country_name = serializers.SerializerMethodField()
+    is_active = serializers.SerializerMethodField()
     
     class Meta:
         model = WasteListing
@@ -37,15 +38,22 @@ class WasteListingSerializer(serializers.ModelSerializer):
         
     def get_country_name(self, obj):
         return dict(WasteListing.COUNTRY_CHOICES).get(obj.country, '')
+        
+    def get_is_active(self, obj):
+        return obj.status == 'ACTIVE'
 
 class WasteListingDetailSerializer(serializers.ModelSerializer):
     images = ListingImageSerializer(many=True, read_only=True)
     seller = UserSerializer(read_only=True)
     waste_type = WasteTypeSerializer(read_only=True)
+    is_active = serializers.SerializerMethodField()
     
     class Meta:
         model = WasteListing
         fields = '__all__'
+        
+    def get_is_active(self, obj):
+        return obj.status == 'ACTIVE'
 
 class OrderSerializer(serializers.ModelSerializer):
     buyer_username = serializers.SerializerMethodField()
