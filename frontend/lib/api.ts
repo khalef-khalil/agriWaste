@@ -56,6 +56,42 @@ export interface ResourceDocument {
   upload_date: string;
 }
 
+// Types for marketplace
+export interface Listing {
+  id: number;
+  title: string;
+  description: string;
+  price: number;
+  price_unit: string;
+  quantity: number;
+  quantity_unit: string;
+  waste_type: number;
+  waste_type_name: string;
+  seller: UserProfile;
+  location: string;
+  country: string;
+  is_active: boolean;
+  created_at: string;
+  images: ListingImage[];
+}
+
+export interface ListingImage {
+  id: number;
+  image_url: string;
+  listing: number;
+}
+
+export interface UserProfile {
+  id: number;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  user_type: string;
+  organization_name?: string;
+  profile_image?: string;
+}
+
 // Types for paginated responses
 interface PaginatedResponse<T> {
   count: number;
@@ -107,6 +143,33 @@ export const catalogApi = {
   getResourceDocumentsByWasteType: async (wasteTypeId: number): Promise<ResourceDocument[]> => {
     const response = await api.get<PaginatedResponse<ResourceDocument>>(`/api/waste-catalog/documents/?waste_type=${wasteTypeId}`);
     return response.data.results;
+  }
+};
+
+// API functions for marketplace
+export const marketplaceApi = {
+  // Get all listings
+  getListings: async (): Promise<Listing[]> => {
+    const response = await api.get<PaginatedResponse<Listing>>('/api/marketplace/listings/');
+    return response.data.results;
+  },
+
+  // Get active listings
+  getActiveListings: async (): Promise<Listing[]> => {
+    const response = await api.get<PaginatedResponse<Listing>>('/api/marketplace/listings/active/');
+    return response.data.results;
+  },
+
+  // Get listings by country
+  getListingsByCountry: async (country: string): Promise<Listing[]> => {
+    const response = await api.get<PaginatedResponse<Listing>>(`/api/marketplace/listings/by_country/?country=${country}`);
+    return response.data.results;
+  },
+
+  // Get listing by ID
+  getListingById: async (id: number): Promise<Listing> => {
+    const response = await api.get(`/api/marketplace/listings/${id}/`);
+    return response.data;
   }
 };
 
