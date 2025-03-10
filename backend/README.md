@@ -10,6 +10,7 @@ Backend API for the AgriWaste Marketplace platform - A marketplace for agricultu
 - Marketplace with listings, orders, reviews, and messaging
 - REST API with public and authenticated endpoints
 - Admin interface for data management
+- Optimized database queries with proper ordering and related data fetching
 
 ## Technology Stack
 
@@ -17,6 +18,13 @@ Backend API for the AgriWaste Marketplace platform - A marketplace for agricultu
 - Django REST Framework
 - PostgreSQL (configured for development with SQLite)
 - Pipenv for dependency management
+
+## Performance Optimizations
+
+- Default ordering on all model querysets
+- Optimized database queries using select_related and prefetch_related
+- Efficient filtering for country-specific listings
+- Cache-friendly model structure
 
 ## Getting Started
 
@@ -99,6 +107,21 @@ The API will be available at http://localhost:8000/
 - Tunisia: `TN`
 - Libya: `LY`
 - Algeria: `DZ`
+
+## Testing
+
+The backend includes a comprehensive test script that validates all API endpoints and functionality:
+
+```bash
+pipenv run python test_api.py
+```
+
+The test script verifies:
+- Authentication and user management
+- Waste catalog browsing (public and authenticated)
+- Country-specific marketplace filtering
+- Orders, reviews and messaging
+- API performance with optimized queries
 
 ## License
 

@@ -41,6 +41,12 @@ class WasteCategoryViewSet(viewsets.ModelViewSet):
             # Allow any user (including unauthenticated) to read categories
             permission_classes = [AllowAnyReadOnly]
         return [permission() for permission in permission_classes]
+    
+    def get_queryset(self):
+        # Optimize by prefetching related waste types when listing categories
+        if self.action == 'retrieve' or self.action == 'list':
+            return WasteCategory.objects.prefetch_related('waste_types').all()
+        return WasteCategory.objects.all()
 
 class WasteTypeViewSet(viewsets.ModelViewSet):
     queryset = WasteType.objects.all()
@@ -62,11 +68,17 @@ class WasteTypeViewSet(viewsets.ModelViewSet):
             return WasteTypeDetailSerializer
         return WasteTypeSerializer
     
+    def get_queryset(self):
+        # Optimize by selecting related category and prefetching documents
+        if self.action == 'retrieve':
+            return WasteType.objects.select_related('category').prefetch_related('documents').all()
+        return WasteType.objects.select_related('category').all()
+    
     @action(detail=False)
     def by_category(self, request):
         category_id = request.query_params.get('category_id')
         if category_id:
-            waste_types = WasteType.objects.filter(category_id=category_id)
+            waste_types = WasteType.objects.select_related('category').filter(category_id=category_id)
             serializer = self.get_serializer(waste_types, many=True)
             return Response(serializer.data)
         return Response({"error": "Category ID is required"}, status=400)
@@ -85,3 +97,7 @@ class ResourceDocumentViewSet(viewsets.ModelViewSet):
             # Allow any user (including unauthenticated) to read documents
             permission_classes = [AllowAnyReadOnly]
         return [permission() for permission in permission_classes]
+        
+    def get_queryset(self):
+        # Optimize by selecting related waste_type
+        return ResourceDocument.objects.select_related('waste_type').all()

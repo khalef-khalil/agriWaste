@@ -43,6 +43,9 @@ class WasteListing(models.Model):
     def __str__(self):
         return self.title
 
+    class Meta:
+        ordering = ['-created_at']
+
 class ListingImage(models.Model):
     listing = models.ForeignKey(WasteListing, on_delete=models.CASCADE, related_name='images')
     image = models.ImageField(upload_to='listing_images/')
@@ -51,6 +54,9 @@ class ListingImage(models.Model):
     
     def __str__(self):
         return f"Image for {self.listing.title}"
+
+    class Meta:
+        ordering = ['-created_at']
 
 class Order(models.Model):
     STATUS_CHOICES = (
@@ -73,6 +79,9 @@ class Order(models.Model):
     def __str__(self):
         return f"Order #{self.id} - {self.buyer.username}"
 
+    class Meta:
+        ordering = ['-created_at']
+
 class Review(models.Model):
     order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='review')
     rating = models.IntegerField()
@@ -81,6 +90,9 @@ class Review(models.Model):
     
     def __str__(self):
         return f"Review for Order #{self.order.id}"
+
+    class Meta:
+        ordering = ['-created_at']
 
 class Message(models.Model):
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages')
@@ -93,3 +105,6 @@ class Message(models.Model):
     
     def __str__(self):
         return f"Message from {self.sender.username} to {self.receiver.username}"
+
+    class Meta:
+        ordering = ['-created_at']

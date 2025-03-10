@@ -13,6 +13,7 @@ class WasteCategory(models.Model):
     
     class Meta:
         verbose_name_plural = "Waste Categories"
+        ordering = ['-created_at']
 
 class WasteType(models.Model):
     category = models.ForeignKey(WasteCategory, on_delete=models.CASCADE, related_name='waste_types')
@@ -26,6 +27,9 @@ class WasteType(models.Model):
     
     def __str__(self):
         return f"{self.name} ({self.category.name})"
+
+    class Meta:
+        ordering = ['-created_at']
 
 class ResourceDocument(models.Model):
     DOCUMENT_TYPES = (
@@ -48,3 +52,6 @@ class ResourceDocument(models.Model):
     
     def __str__(self):
         return self.title
+
+    class Meta:
+        ordering = ['-created_at']

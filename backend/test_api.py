@@ -139,6 +139,9 @@ class APITester:
         success = success and self.test_delete_waste_type()
         success = success and self.test_delete_waste_category()
         
+        # Performance tests
+        success = success and self.test_api_performance()
+        
         if success:
             print("\n✅ All tests passed successfully!")
         else:
@@ -956,6 +959,42 @@ class APITester:
         # Save a listing ID for later use
         if country_listing_ids.get('TN'):
             self.listing_id = country_listing_ids['TN']
+        
+        return True
+    
+    def test_api_performance(self):
+        """Test API performance with optimized queries"""
+        log("\n⏱️ Testing API performance with optimized queries...")
+        
+        # Test listing with multiple countries
+        start_time = time.time()
+        url = f"{BASE_URL}/api/marketplace/listings/"
+        headers = {'Authorization': f"Token {self.tokens['farmer']}"}
+        response = requests.get(url, headers=headers)
+        if not assert_status_code(response, 200):
+            return False
+        listing_time = time.time() - start_time
+        log(f"✅ Got listings in {listing_time:.4f} seconds")
+        
+        # Test waste types with category inclusion
+        start_time = time.time()
+        url = f"{BASE_URL}/api/waste-catalog/types/"
+        headers = {'Authorization': f"Token {self.tokens['researcher']}"}
+        response = requests.get(url, headers=headers)
+        if not assert_status_code(response, 200):
+            return False
+        waste_types_time = time.time() - start_time
+        log(f"✅ Got waste types in {waste_types_time:.4f} seconds")
+        
+        # Test messages with related data
+        start_time = time.time()
+        url = f"{BASE_URL}/api/marketplace/messages/my_messages/"
+        headers = {'Authorization': f"Token {self.tokens['farmer']}"}
+        response = requests.get(url, headers=headers)
+        if not assert_status_code(response, 200):
+            return False
+        messages_time = time.time() - start_time
+        log(f"✅ Got messages in {messages_time:.4f} seconds")
         
         return True
 

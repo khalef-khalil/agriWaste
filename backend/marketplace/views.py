@@ -58,7 +58,7 @@ class WasteListingViewSet(viewsets.ModelViewSet):
     ordering_fields = ['price', 'created_at', 'available_from']
     
     def get_queryset(self):
-        queryset = WasteListing.objects.all()
+        queryset = WasteListing.objects.select_related('seller', 'waste_type').all()
         
         # Filter by country if specified
         country = self.request.query_params.get('country', None)
@@ -88,7 +88,7 @@ class WasteListingViewSet(viewsets.ModelViewSet):
     
     @action(detail=False)
     def my_listings(self, request):
-        listings = WasteListing.objects.filter(seller=request.user)
+        listings = WasteListing.objects.select_related('waste_type').filter(seller=request.user)
         page = self.paginate_queryset(listings)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -98,7 +98,7 @@ class WasteListingViewSet(viewsets.ModelViewSet):
     
     @action(detail=False)
     def active(self, request):
-        queryset = WasteListing.objects.filter(status='ACTIVE')
+        queryset = WasteListing.objects.select_related('seller', 'waste_type').filter(status='ACTIVE')
         
         # Filter by country if specified
         country = self.request.query_params.get('country', None)
@@ -118,7 +118,7 @@ class WasteListingViewSet(viewsets.ModelViewSet):
         if not country:
             return Response({"error": "Country parameter is required"}, status=400)
             
-        queryset = WasteListing.objects.filter(country=country, status='ACTIVE')
+        queryset = WasteListing.objects.select_related('seller', 'waste_type').filter(country=country, status='ACTIVE')
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -158,8 +158,8 @@ class OrderViewSet(viewsets.ModelViewSet):
         # Users can only see their own orders or orders for their listings
         user = self.request.user
         if user.is_staff:
-            return Order.objects.all()
-        return Order.objects.filter(
+            return Order.objects.select_related('buyer', 'listing', 'listing__seller', 'listing__waste_type').all()
+        return Order.objects.select_related('buyer', 'listing', 'listing__seller', 'listing__waste_type').filter(
             Q(buyer=user) | Q(listing__seller=user)
         )
     
@@ -190,7 +190,7 @@ class OrderViewSet(viewsets.ModelViewSet):
     
     @action(detail=False)
     def my_orders(self, request):
-        orders = Order.objects.filter(buyer=request.user)
+        orders = Order.objects.select_related('listing', 'listing__waste_type').filter(buyer=request.user)
         page = self.paginate_queryset(orders)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -200,7 +200,7 @@ class OrderViewSet(viewsets.ModelViewSet):
     
     @action(detail=False)
     def my_sales(self, request):
-        orders = Order.objects.filter(listing__seller=request.user)
+        orders = Order.objects.select_related('buyer', 'listing').filter(listing__seller=request.user)
         page = self.paginate_queryset(orders)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -279,7 +279,7 @@ class MessageViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         # Users can only see messages they've sent or received
         user = self.request.user
-        return Message.objects.filter(
+        return Message.objects.select_related('sender', 'receiver', 'listing').filter(
             Q(sender=user) | Q(receiver=user)
         )
     
@@ -288,7 +288,7 @@ class MessageViewSet(viewsets.ModelViewSet):
     
     @action(detail=False)
     def my_messages(self, request):
-        messages = Message.objects.filter(
+        messages = Message.objects.select_related('sender', 'receiver', 'listing').filter(
             Q(sender=request.user) | Q(receiver=request.user)
         ).order_by('-created_at')
         
@@ -301,7 +301,7 @@ class MessageViewSet(viewsets.ModelViewSet):
     
     @action(detail=False)
     def unread(self, request):
-        messages = Message.objects.filter(
+        messages = Message.objects.select_related('sender', 'listing').filter(
             receiver=request.user,
             read=False
         ).order_by('-created_at')
