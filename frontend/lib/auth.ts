@@ -1,18 +1,26 @@
 import { createContext, useContext } from 'react';
 
 // Types
+export interface UserProfile {
+  id?: number;
+  user_type: 'FARMER' | 'RESEARCHER' | 'STARTUP' | 'INDUSTRY' | 'OTHER';
+  organization?: string;
+  bio?: string;
+  address?: string;
+  phone_number?: string;
+  profile_image?: string;
+  country?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface User {
   id: number;
   username: string;
   email: string;
   first_name: string;
   last_name: string;
-  user_type: 'Farmer' | 'Researcher' | 'Startup' | 'Industry';
-  profile_picture?: string;
-  phone_number?: string;
-  address?: string;
-  bio?: string;
-  country?: string;
+  profile?: UserProfile;
 }
 
 export interface AuthContextType {

@@ -17,6 +17,13 @@ import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 // Form schema
 const profileSchema = z.object({
@@ -43,10 +50,10 @@ export function ProfileForm() {
       email: user?.email || '',
       first_name: user?.first_name || '',
       last_name: user?.last_name || '',
-      phone_number: user?.phone_number || '',
-      address: user?.address || '',
-      bio: user?.bio || '',
-      country: user?.country || '',
+      phone_number: user?.profile?.phone_number || '',
+      address: user?.profile?.address || '',
+      bio: user?.profile?.bio || '',
+      country: user?.profile?.country || '',
     },
   });
 
@@ -57,13 +64,20 @@ export function ProfileForm() {
         email: user.email,
         first_name: user.first_name,
         last_name: user.last_name,
-        phone_number: user.phone_number || '',
-        address: user.address || '',
-        bio: user.bio || '',
-        country: user.country || '',
+        phone_number: user.profile?.phone_number || '',
+        address: user.profile?.address || '',
+        bio: user.profile?.bio || '',
+        country: user.profile?.country || '',
       });
     }
   }, [user, form]);
+
+  // Country choices matching the backend model
+  const COUNTRY_CHOICES = [
+    { value: 'TN', label: 'Tunisia' },
+    { value: 'LY', label: 'Libya' },
+    { value: 'DZ', label: 'Algeria' },
+  ];
 
   // Submit handler
   const onSubmit = async (data: ProfileFormValues) => {
@@ -71,7 +85,25 @@ export function ProfileForm() {
     setIsSuccess(false);
     
     try {
-      await updateProfile(data);
+      // Restructure data to match the backend's expected format
+      const profileData = {
+        first_name: data.first_name,
+        last_name: data.last_name,
+        email: data.email,
+        profile: {
+          user_type: user?.profile?.user_type || 'FARMER', // Send the user_type which is required
+          bio: data.bio,
+          address: data.address,
+          phone_number: data.phone_number,
+          // country is stored in the profile
+          country: data.country,
+          // Preserve other profile fields if they exist
+          organization: user?.profile?.organization,
+          profile_image: user?.profile?.profile_image
+        }
+      };
+      
+      await updateProfile(profileData);
       setIsSuccess(true);
       toast.success('Profil mis à jour avec succès');
     } catch (err) {
@@ -198,13 +230,23 @@ export function ProfileForm() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Pays</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Votre pays"
-                          {...field}
-                          className="bg-card"
-                        />
-                      </FormControl>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="bg-card">
+                            <SelectValue placeholder="Sélectionnez un pays" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {COUNTRY_CHOICES.map((country) => (
+                            <SelectItem key={country.value} value={country.value}>
+                              {country.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}

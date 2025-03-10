@@ -6,7 +6,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
         fields = ['id', 'user_type', 'organization', 'bio', 'address', 
-                 'phone_number', 'profile_image', 'created_at', 'updated_at']
+                 'phone_number', 'profile_image', 'country', 'created_at', 'updated_at']
 
 class UserSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer(read_only=True)
@@ -31,7 +31,7 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = UserProfile
-        fields = ['user_type', 'organization', 'bio', 'address', 'phone_number', 'profile_image']
+        fields = ['user_type', 'organization', 'bio', 'address', 'phone_number', 'profile_image', 'country']
 
 class UserUpdateSerializer(serializers.ModelSerializer):
     profile = UserProfileUpdateSerializer()
@@ -56,6 +56,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             profile.address = profile_data.get('address', profile.address)
             profile.phone_number = profile_data.get('phone_number', profile.phone_number)
             profile.profile_image = profile_data.get('profile_image', profile.profile_image)
+            profile.country = profile_data.get('country', profile.country)
             profile.save()
             
         return instance 

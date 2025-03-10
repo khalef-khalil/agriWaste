@@ -11,6 +11,12 @@ class UserProfile(models.Model):
         ('INDUSTRY', 'Industry'),
         ('OTHER', 'Other'),
     )
+
+    COUNTRY_CHOICES = (
+        ('TN', 'Tunisia'),
+        ('LY', 'Libya'),
+        ('DZ', 'Algeria'),
+    )
     
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     user_type = models.CharField(max_length=20, choices=USER_TYPES)
@@ -19,6 +25,7 @@ class UserProfile(models.Model):
     address = models.CharField(max_length=255, blank=True, null=True)
     phone_number = models.CharField(max_length=20, blank=True, null=True)
     profile_image = models.ImageField(upload_to='profile_images/', blank=True, null=True)
+    country = models.CharField(max_length=2, choices=COUNTRY_CHOICES, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

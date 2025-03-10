@@ -291,7 +291,8 @@ class APITester:
                 'organization': 'Updated Farms Inc.',
                 'bio': 'Updated bio',
                 'address': 'Updated address',
-                'phone_number': '+9876543210'
+                'phone_number': '+9876543210',
+                'country': 'TN'  # Add Tunisia as country
             }
         }
         
@@ -303,6 +304,27 @@ class APITester:
         if data['first_name'] != 'Updated':
             log(f"ERROR: First name not updated, got {data['first_name']}")
             return False
+            
+        # Verify country field is updated correctly
+        if data['profile']['country'] != 'TN':
+            log(f"ERROR: Country not updated, got {data['profile'].get('country', 'None')}")
+            return False
+            
+        log("✅ Profile country updated to Tunisia successfully")
+        
+        # Test changing to a different country
+        profile_data['profile']['country'] = 'DZ'  # Change to Algeria
+        
+        response = requests.put(url, json=profile_data, headers=headers)
+        if not assert_status_code(response, 200):
+            return False
+            
+        data = response.json()
+        if data['profile']['country'] != 'DZ':
+            log(f"ERROR: Country not updated to Algeria, got {data['profile'].get('country', 'None')}")
+            return False
+            
+        log("✅ Profile country updated to Algeria successfully")
         
         log("✅ Update user profile successful")
         return True

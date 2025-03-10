@@ -54,6 +54,13 @@ export function RegisterForm() {
   const [step, setStep] = useState(1); // Multi-step form
   const totalSteps = 2;
 
+  // Country choices matching the backend model
+  const COUNTRY_CHOICES = [
+    { value: 'TN', label: 'Tunisia' },
+    { value: 'LY', label: 'Libya' },
+    { value: 'DZ', label: 'Algeria' },
+  ];
+
   // Initialize form
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -310,9 +317,23 @@ export function RegisterForm() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Pays (Optionnel)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Votre pays" {...field} className="bg-card" />
-                        </FormControl>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="bg-card">
+                              <SelectValue placeholder="Sélectionnez un pays" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {COUNTRY_CHOICES.map((country) => (
+                              <SelectItem key={country.value} value={country.value}>
+                                {country.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}

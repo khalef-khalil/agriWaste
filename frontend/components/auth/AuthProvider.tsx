@@ -133,8 +133,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     try {
       const response = await axios.put(`${API_URL}/api/users/update_me/`, data);
+      // Update the user state with the response data
       setUser(response.data);
+      console.log('Profile updated successfully:', response.data);
     } catch (err: any) {
+      console.error('Profile update error:', err.response?.data || err.message);
       setError('Failed to update profile. Please try again.');
     } finally {
       setLoading(false);
