@@ -64,13 +64,13 @@ class Command(BaseCommand):
         parser.add_argument(
             '--listings',
             type=int,
-            default=80,
-            help='Number of waste listings to create'
+            default=30,
+            help='Number of marketplace listings to create'
         )
         parser.add_argument(
             '--orders',
             type=int,
-            default=40,
+            default=15,
             help='Number of orders to create'
         )
         parser.add_argument(
@@ -114,6 +114,9 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING("Using legacy data generation methods due to compatibility issues."))
             self.handle_categories()
             self.handle_waste_types()
+        
+        # Generate marketplace listings
+        self.handle_listings()
         
         self.handle_orders()
         self.handle_reviews()
@@ -484,6 +487,168 @@ class Command(BaseCommand):
             self.waste_types.append(waste_type)
         
         self.stdout.write(f'Created {len(self.waste_types)} waste types')
+
+    def handle_listings(self):
+        """Generate mock marketplace listings."""
+        self.stdout.write("Generating marketplace listings...")
+        
+        # Get all waste types and users
+        waste_types = list(WasteType.objects.all())
+        if not waste_types:
+            self.stdout.write(self.style.WARNING("No waste types found. Skipping listings generation."))
+            return
+            
+        users = list(User.objects.filter(profile__user_type__in=['FARMER', 'INDUSTRY']))
+        if not users:
+            self.stdout.write(self.style.WARNING("No appropriate users found (farmers/industrial). Skipping listings generation."))
+            return
+            
+        # Get listing count from options or use default
+        listing_count = self.options.get('listings', 30)
+        
+        # French city names for locations
+        cities = [
+            "Tunis", "Sfax", "Sousse", "Kairouan", "Bizerte", # Tunisia
+            "Tripoli", "Benghazi", "Misrata", "Zawiya", "Zliten", # Libya
+            "Alger", "Oran", "Constantine", "Annaba", "Blida", # Algeria
+        ]
+        
+        # Listing titles in French related to agricultural waste
+        listing_titles = [
+            "Déchets d'olives disponibles",
+            "Biomasse agricole à vendre",
+            "Résidus de blé en grande quantité",
+            "Déchets de maïs frais",
+            "Pulpe d'agrumes disponible",
+            "Restes de taille d'olivier",
+            "Déchets de tomate pour compost",
+            "Paille de céréales",
+            "Feuilles de palmier dattier",
+            "Résidus de pressage d'huile",
+            "Marc de raisin après vinification",
+            "Déchets de transformation de fruits",
+            "Coques d'amandes disponibles",
+            "Résidus de café pour compost",
+            "Écorces d'agrumes en vrac",
+        ]
+        
+        # Unit prices by waste type category (approx. prices in TND)
+        price_ranges = {
+            "Résidus de récolte": (20, 150),
+            "Déchets de transformation": (50, 200),
+            "Biomasse ligneuse": (30, 100),
+            "Déchets d'élevage": (15, 80),
+            "Résidus agroindustriels": (60, 250),
+            "default": (25, 120)
+        }
+        
+        # Country distribution
+        country_distribution = {
+            'TN': 0.5,  # Tunisia: 50%
+            'DZ': 0.3,  # Algeria: 30%
+            'LY': 0.2,  # Libya: 20%
+        }
+        
+        # Quantity units by waste type
+        unit_mapping = {
+            "Résidus de récolte": ["KG", "TON"],
+            "Déchets de transformation": ["KG", "LITER"],
+            "Biomasse ligneuse": ["KG", "CUBIC_M"],
+            "Déchets d'élevage": ["KG", "TON"],
+            "Résidus agroindustriels": ["KG", "LITER", "TON"],
+            "default": ["KG", "UNIT"]
+        }
+        
+        # Real image files that have been downloaded
+        listing_images = [
+            "olive_waste.jpg",
+            "grain_waste.jpg",
+            "fruit_waste.jpg",
+            "compost.jpg",
+            "palm_leaves.jpg",
+            "coffee_waste.jpg"
+        ]
+        
+        # Generate listings
+        listings_created = 0
+        for _ in range(listing_count):
+            try:
+                # Select random waste type and seller
+                waste_type = random.choice(waste_types)
+                seller = random.choice(users)
+                
+                # Get category name to determine price range and units
+                category_name = waste_type.category.name if waste_type.category else "default"
+                
+                # Determine price range based on category
+                min_price, max_price = price_ranges.get(category_name, price_ranges['default'])
+                
+                # Determine quantity unit based on waste type
+                possible_units = unit_mapping.get(category_name, unit_mapping['default'])
+                unit = random.choice(possible_units)
+                
+                # Determine country based on distribution
+                country = random.choices(
+                    list(country_distribution.keys()),
+                    weights=list(country_distribution.values()),
+                    k=1
+                )[0]
+                
+                # Select city based on country
+                if country == 'TN':
+                    location = random.choice(cities[:5])
+                elif country == 'LY':
+                    location = random.choice(cities[5:10])
+                else:  # Algeria
+                    location = random.choice(cities[10:])
+                
+                # Determine availability dates
+                today = timezone.now().date()
+                available_from = today + datetime.timedelta(days=random.randint(0, 15))
+                available_until = available_from + datetime.timedelta(days=random.randint(30, 90))
+                
+                # Randomize featured status (10% chance of being featured)
+                featured = random.random() < 0.1
+                
+                # Create the listing
+                listing = WasteListing.objects.create(
+                    seller=seller,
+                    waste_type=waste_type,
+                    title=random.choice(listing_titles),
+                    description=self.fake.paragraph(nb_sentences=random.randint(3, 6)),
+                    quantity=Decimal(random.randint(50, 5000)),
+                    unit=unit,
+                    price=Decimal(random.randint(min_price, max_price)),
+                    location=location,
+                    country=country,
+                    available_from=available_from,
+                    available_until=available_until,
+                    status='ACTIVE',
+                    featured=featured
+                )
+                
+                # Create 1-3 listing images using the real image files
+                image_count = random.randint(1, 3)
+                for i in range(image_count):
+                    is_primary = (i == 0)  # first image is primary
+                    # Use an existing image file
+                    image_file = random.choice(listing_images)
+                    
+                    ListingImage.objects.create(
+                        listing=listing,
+                        image=f"listing_images/{image_file}",
+                        is_primary=is_primary
+                    )
+                
+                listings_created += 1
+                
+                if listings_created % 5 == 0:
+                    self.stdout.write(f" - Created {listings_created} listings...")
+                    
+            except Exception as e:
+                self.stdout.write(self.style.WARNING(f"Error creating listing: {str(e)}"))
+        
+        self.stdout.write(self.style.SUCCESS(f"Created {listings_created} marketplace listings"))
 
     def handle_orders(self):
         """Create orders."""

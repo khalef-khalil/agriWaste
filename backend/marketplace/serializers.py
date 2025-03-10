@@ -5,9 +5,19 @@ from waste_catalog.serializers import WasteTypeSerializer
 from users.serializers import UserSerializer
 
 class ListingImageSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+    
     class Meta:
         model = ListingImage
-        fields = ['id', 'image', 'is_primary', 'created_at']
+        fields = ['id', 'image', 'image_url', 'is_primary', 'created_at']
+        
+    def get_image_url(self, obj):
+        request = self.context.get('request')
+        if obj.image and hasattr(obj.image, 'url'):
+            if request:
+                return request.build_absolute_uri(obj.image.url)
+            return obj.image.url
+        return None
 
 class WasteListingSerializer(serializers.ModelSerializer):
     images = ListingImageSerializer(many=True, read_only=True)
