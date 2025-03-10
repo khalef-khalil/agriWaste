@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { notFound } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Loader2, ArrowLeft, FileText, Calendar, Box, Truck, Flask, AlertTriangle } from 'lucide-react';
+import { Loader2, ArrowLeft, FileText, Calendar, Box, Truck, FlaskConical, AlertTriangle } from 'lucide-react';
 import { catalogApi, WasteType, ResourceDocument } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -105,7 +105,9 @@ export default function WasteTypeDetailPage({ params }: { params: { id: string }
                 >
                   {wasteType.category && (
                     <Link 
-                      href={`/catalog/category/${toPathString(wasteType.category)}`} 
+                      href={`/catalog/category/${typeof wasteType.category === 'object' ? 
+                        toPathString((wasteType.category as any).id || wasteType.category) : 
+                        toPathString(wasteType.category)}`} 
                       className="inline-block px-3 py-1 bg-primary/10 rounded-full text-sm font-medium text-primary mb-4 hover:bg-primary/20 transition-colors"
                     >
                       {wasteType.category_name || 'Catégorie'}
@@ -204,7 +206,7 @@ export default function WasteTypeDetailPage({ params }: { params: { id: string }
                   
                   <div className="space-y-6">
                     <div className="flex items-start">
-                      <Flask className="h-5 w-5 text-primary mr-3 mt-0.5 flex-shrink-0" />
+                      <FlaskConical className="h-5 w-5 text-primary mr-3 mt-0.5 flex-shrink-0" />
                       <div>
                         <h3 className="font-medium">Applications potentielles</h3>
                         <p className="text-muted-foreground mt-1">{wasteType.potential_applications || wasteType.potential_uses || 'Non spécifié'}</p>
