@@ -19,6 +19,39 @@ Backend API for the AgriWaste Marketplace platform - A marketplace for agricultu
 - PostgreSQL (configured for development with SQLite)
 - Pipenv for dependency management
 
+## Mock Data Generation
+
+For development and testing purposes, the project includes a mock data generator that can create realistic sample data for all models in the system.
+
+### Using the Mock Data Generator
+
+You can generate mock data using the provided shell script:
+
+```bash
+# From the backend directory
+./generate_mock_data.sh
+```
+
+Or directly using Django's management command:
+
+```bash
+# Using pipenv
+pipenv run python manage.py generate_mock_data
+
+# Or without pipenv
+python manage.py generate_mock_data
+```
+
+### Customizing the Mock Data
+
+You can customize the amount and type of data generated:
+
+```bash
+./generate_mock_data.sh --users 30 --categories 10 --types 40 --listings 100 --clear
+```
+
+See the full documentation in `waste_catalog/management/commands/README.md` for more details.
+
 ## Performance Optimizations
 
 - Default ordering on all model querysets

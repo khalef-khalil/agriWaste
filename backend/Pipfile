@@ -11,6 +11,7 @@ psycopg2-binary = "*"
 pillow = "*"
 requests = "*"
 sqlite-web = "*"
+faker = "*"
 
 [dev-packages]
 
