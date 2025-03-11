@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { useState } from "react";
 import { Order } from "@/lib/api";
 import { formatDate, getIdSafely } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,8 +18,14 @@ import {
   Clock,
   MessageSquare,
   ArrowUpRight,
+  Star,
+  MessageCircle,
 } from "lucide-react";
 import Link from "next/link";
+import CreateReviewForm from "@/components/reviews/create-review-form";
+import ReviewList from "@/components/reviews/review-list";
+import MessageDialog from "@/components/messages/message-dialog";
+import { toast } from "sonner";
 
 interface OrderDetailProps {
   order: Order;
@@ -50,6 +57,10 @@ const normalizeListingStatus = (status: string | undefined): string => {
 };
 
 export function OrderDetail({ order, isSeller, onOrderUpdate, onReload }: OrderDetailProps) {
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [hasReviewed, setHasReviewed] = useState(false);
+  const [showMessageDialog, setShowMessageDialog] = useState(false);
+
   // Log the raw order object received
   console.log("Raw order object received:", order);
 
@@ -239,6 +250,34 @@ export function OrderDetail({ order, isSeller, onOrderUpdate, onReload }: OrderD
     normalizedStatus
   });
 
+  // Debug seller ID
+  console.log("Seller data:", {
+    rawSeller: seller,
+    sellerId: typeof seller === 'object' ? seller.id : seller,
+    sellerDetails: seller_details
+  });
+  
+  // Get a valid seller ID for messaging
+  const getValidSellerId = () => {
+    // First try seller_details which should be the most complete
+    if (seller_details && typeof seller_details === 'object' && seller_details.id) {
+      return seller_details.id;
+    }
+    
+    // Next try seller if it's an object
+    if (seller && typeof seller === 'object' && seller.id) {
+      return seller.id;
+    }
+    
+    // Finally use seller as a number if it exists
+    if (seller && typeof seller === 'number') {
+      return seller;
+    }
+    
+    // If nothing else works, return undefined which will trigger validation
+    return undefined;
+  };
+
   const containerAnimation = {
     hidden: { opacity: 0 },
     show: {
@@ -252,6 +291,29 @@ export function OrderDetail({ order, isSeller, onOrderUpdate, onReload }: OrderD
   const itemAnimation = {
     hidden: { opacity: 0, y: 20 },
     show: { opacity: 1, y: 0 },
+  };
+
+  // Update button click handler
+  const handleContactSellerClick = () => {
+    const sellerId = getValidSellerId();
+    
+    // More detailed logging
+    console.log("Contact Seller - Debug info:", {
+      sellerId,
+      sellerObject: seller,
+      sellerDetails,
+      sellerDetailsWithFallback,
+      listing,
+      listingId: typeof listing === 'object' ? listing.id : listing
+    });
+    
+    if (!sellerId) {
+      // Show error if we don't have a valid seller ID
+      toast.error("Impossible de contacter le vendeur: ID du vendeur invalide");
+      return;
+    }
+    
+    setShowMessageDialog(true);
   };
 
   return (
@@ -281,6 +343,30 @@ export function OrderDetail({ order, isSeller, onOrderUpdate, onReload }: OrderD
               order={order} 
               onUpdate={onOrderUpdate} 
             />
+          )}
+          
+          {!isSeller && normalizedStatus === 'completed' && !hasReviewed && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex items-center gap-2"
+              onClick={() => setShowReviewForm(true)}
+            >
+              <Star className="h-4 w-4" />
+              Laisser un avis
+            </Button>
+          )}
+
+          {!isSeller && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex items-center gap-2"
+              onClick={handleContactSellerClick}
+            >
+              <MessageCircle className="h-4 w-4" />
+              Contacter le vendeur
+            </Button>
           )}
         </div>
       </motion.div>
@@ -441,7 +527,39 @@ export function OrderDetail({ order, isSeller, onOrderUpdate, onReload }: OrderD
             </CardContent>
           </Card>
         </motion.div>
+
+        {normalizedStatus === 'completed' && !isSeller && (
+          <motion.div variants={itemAnimation} className="lg:col-span-2">
+            <ReviewList 
+              userId={typeof sellerDetailsWithFallback === 'object' ? sellerDetailsWithFallback.id : null}
+              title="Avis sur le vendeur"
+              maxItems={3}
+            />
+          </motion.div>
+        )}
       </div>
+      
+      <CreateReviewForm
+        order={order}
+        open={showReviewForm}
+        onOpenChange={setShowReviewForm}
+        onReviewSubmitted={() => {
+          setHasReviewed(true);
+          // Optionally reload the page or update the UI
+          if (onReload) {
+            onReload();
+          }
+        }}
+      />
+
+      <MessageDialog
+        open={showMessageDialog}
+        onOpenChange={setShowMessageDialog}
+        recipientId={getValidSellerId() || 0}
+        listingId={typeof listing === 'object' ? listing.id : (listing || undefined)}
+        userId={typeof buyer === 'object' ? buyer.id : (buyer || 0)}
+        title={`Question sur commande #${id}`}
+      />
     </motion.div>
   );
 } 

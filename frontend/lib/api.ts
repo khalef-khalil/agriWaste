@@ -26,6 +26,16 @@ api.interceptors.request.use(
           console.log('Full headers:', config.headers);
           console.log('Request data:', JSON.stringify(config.data, null, 2));
         }
+        
+        // Debug token for message creation/retrieval
+        if (config.url?.includes('/api/marketplace/messages') && 
+            (config.method === 'post' || config.method === 'get')) {
+          console.log('Adding token to message API request:', token.substring(0, 10) + '...');
+          console.log('Full headers:', config.headers);
+          if (config.data) {
+            console.log('Message request data:', JSON.stringify(config.data, null, 2));
+          }
+        }
       } else {
         console.warn('No auth token found in localStorage');
       }
@@ -514,6 +524,176 @@ export const ordersApi = {
   },
 };
 
+// Types for Reviews and Messages
+export interface Review {
+  id: number;
+  order: number;
+  reviewer: number | UserProfile;
+  reviewer_details?: UserProfile;
+  recipient: number | UserProfile;
+  recipient_details?: UserProfile;
+  rating: number;
+  comment: string;
+  created_at: string;
+}
+
+export interface CreateReviewRequest {
+  order: number;
+  rating: number;
+  comment: string;
+}
+
+export interface Message {
+  id: number;
+  sender: number | UserProfile;
+  sender_details?: UserProfile;
+  recipient: number | UserProfile;
+  recipient_details?: UserProfile;
+  listing?: number | Listing;
+  listing_details?: Listing;
+  subject: string;
+  content: string;
+  is_read: boolean;
+  created_at: string;
+  parent_message?: number;
+}
+
+export interface CreateMessageRequest {
+  receiver: number;
+  subject: string;
+  content: string;
+  listing?: number;
+  parent_message?: number;
+}
+
+// API functions for reviews
+export const reviewsApi = {
+  // Create a new review
+  createReview: async (reviewData: CreateReviewRequest): Promise<Review> => {
+    try {
+      const response = await api.post('/api/marketplace/reviews/', reviewData);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating review:', error);
+      throw error;
+    }
+  },
+
+  // Get reviews for a user
+  getUserReviews: async (userId: number): Promise<Review[]> => {
+    try {
+      const response = await api.get<PaginatedResponse<Review>>(`/api/marketplace/reviews/?recipient=${userId}`);
+      return response.data.results;
+    } catch (error) {
+      console.error('Error fetching user reviews:', error);
+      throw error;
+    }
+  },
+
+  // Get reviews for a listing
+  getListingReviews: async (listingId: number): Promise<Review[]> => {
+    try {
+      const response = await api.get<PaginatedResponse<Review>>(`/api/marketplace/reviews/?listing=${listingId}`);
+      return response.data.results;
+    } catch (error) {
+      console.error('Error fetching listing reviews:', error);
+      throw error;
+    }
+  }
+};
+
+// API functions for messages
+export const messagesApi = {
+  // Get user's messages
+  getMyMessages: async (): Promise<Message[]> => {
+    try {
+      const response = await api.get<PaginatedResponse<Message>>('/api/marketplace/messages/my_messages/');
+      return response.data.results;
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      throw error;
+    }
+  },
+
+  // Get unread messages
+  getUnreadMessages: async (): Promise<Message[]> => {
+    try {
+      const response = await api.get<PaginatedResponse<Message>>('/api/marketplace/messages/unread/');
+      return response.data.results;
+    } catch (error) {
+      console.error('Error fetching unread messages:', error);
+      throw error;
+    }
+  },
+
+  // Create a new message
+  createMessage: async (messageData: CreateMessageRequest): Promise<Message> => {
+    try {
+      // First, verify we have a valid token
+      const token = localStorage.getItem('token');
+      console.log("Create Message - Auth token available:", !!token);
+      if (token) {
+        console.log("Create Message - Token first 10 chars:", token.substring(0, 10) + "...");
+      }
+      
+      console.log("Create Message - Data:", JSON.stringify(messageData, null, 2));
+      
+      // Validate that we have required fields before sending
+      if (!messageData.receiver) {
+        console.error("Create Message - Error: Receiver ID is required");
+        throw new Error('Receiver ID is required');
+      }
+      
+      if (!messageData.subject || !messageData.content) {
+        console.error("Create Message - Error: Subject and content are required");
+        throw new Error('Subject and content are required');
+      }
+      
+      // We're good to go, make the request
+      console.log("Create Message - Making API request to create message");
+      const response = await api.post('/api/marketplace/messages/', messageData);
+      console.log("Create Message - Success:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Create Message - Error creating message:', error);
+      
+      // Log more details about the error for debugging
+      if (axios.isAxiosError(error) && error.response) {
+        console.error("Create Message - Error details:", {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data,
+          headers: error.response.headers
+        });
+      }
+      
+      throw error;
+    }
+  },
+
+  // Mark message as read
+  markAsRead: async (messageId: number): Promise<Message> => {
+    try {
+      const response = await api.post(`/api/marketplace/messages/${messageId}/mark_as_read/`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error marking message ${messageId} as read:`, error);
+      throw error;
+    }
+  },
+  
+  // Get conversation thread (all messages related to the same parent)
+  getMessageThread: async (parentMessageId: number): Promise<Message[]> => {
+    try {
+      const response = await api.get<PaginatedResponse<Message>>(`/api/marketplace/messages/?parent_message=${parentMessageId}`);
+      return response.data.results;
+    } catch (error) {
+      console.error('Error fetching message thread:', error);
+      throw error;
+    }
+  }
+};
+
 // API functions for marketplace
 export const marketplaceApi = {
   // Get all listings
@@ -675,6 +855,8 @@ export const marketplaceApi = {
   },
 
   ...ordersApi,
+  ...reviewsApi,
+  ...messagesApi,
 };
 
 export default api; 

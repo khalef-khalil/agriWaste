@@ -7,17 +7,23 @@ import { marketplaceApi, Listing } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { MapPin, Calendar, Package, DollarSign, ArrowLeft, MessageSquare, Info } from "lucide-react";
+import { MapPin, Calendar, Package, DollarSign, ArrowLeft, MessageSquare, Info, Star, Mail, ShoppingCart } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { CreateOrderForm } from "@/components/orders/create-order-form";
 import { toast } from "sonner";
+import ReviewList from "@/components/reviews/review-list";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import CreateReviewForm from "@/components/reviews/create-review-form";
+import MessageDialog from "@/components/messages/message-dialog";
 
 export default function ListingDetailPage({ params }: { params: { id: string } }) {
   const [listing, setListing] = useState<Listing | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isOrderFormOpen, setIsOrderFormOpen] = useState(false);
+  const [showMessageDialog, setShowMessageDialog] = useState(false);
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
 
@@ -40,7 +46,30 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
   // Function to check if the current user is the seller
   const isCurrentUserSeller = () => {
     if (!user || !listing || !listing.seller) return false;
-    return user.id === listing.seller.id;
+    
+    const sellerId = typeof listing.seller === 'object' ? listing.seller.id : listing.seller;
+    return user.id === sellerId;
+  };
+
+  // Function to handle contact seller
+  const handleContactSeller = () => {
+    if (!isAuthenticated) {
+      router.push("/login?redirect=" + encodeURIComponent(`/marketplace/${params.id}`));
+      return;
+    }
+    
+    if (isCurrentUserSeller()) {
+      toast.error("Vous ne pouvez pas vous contacter vous-même");
+      return;
+    }
+    
+    // Get seller ID, handling both object and number cases
+    const sellerId = typeof listing.seller === 'object' 
+      ? listing.seller.id 
+      : listing.seller;
+      
+    // Redirect to messages page with pre-filled data
+    router.push(`/dashboard/messages?recipient=${sellerId}&listing=${listing.id}&subject=Question sur ${listing.title.substring(0, 30)}${listing.title.length > 30 ? '...' : ''}`);
   };
 
   if (isLoading) {
@@ -208,35 +237,58 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
             </CardContent>
           </Card>
 
-          <div className="flex gap-4">
-            {isCurrentUserSeller() ? (
-              <div className="bg-muted p-3 rounded-lg w-full flex items-center justify-center gap-2 text-muted-foreground">
-                <Info size={16} />
-                <span>C'est votre annonce</span>
-              </div>
-            ) : (
+          <div className="flex flex-col space-y-3 my-4">
+            {!isCurrentUserSeller() && (
               <>
-                <Button className="flex-1">
-                  Contacter le vendeur <MessageSquare size={16} className="ml-2" />
-                </Button>
-                <Button 
-                  className="flex-1"
+                <Button
+                  variant="default"
+                  className="w-full"
                   onClick={() => {
-                    if (!isAuthenticated) {
-                      router.push("/login?redirect=" + encodeURIComponent(`/marketplace/${params.id}`));
+                    if (!user) {
+                      toast.error("Veuillez vous connecter pour contacter le vendeur");
+                      router.push('/auth/signin');
                       return;
                     }
-                    
-                    if (isCurrentUserSeller()) {
-                      toast.error("Vous ne pouvez pas commander votre propre annonce");
+                    setShowMessageDialog(true);
+                  }}
+                >
+                  <Mail className="w-4 h-4 mr-2" />
+                  Contacter le vendeur
+                </Button>
+                
+                <Button
+                  variant="secondary"
+                  className="w-full"
+                  onClick={() => {
+                    if (!user) {
+                      toast.error("Veuillez vous connecter pour passer une commande");
+                      router.push('/auth/signin');
                       return;
                     }
-                    
                     setIsOrderFormOpen(true);
                   }}
-                  disabled={isCurrentUserSeller()}
                 >
-                  Passer commande
+                  <ShoppingCart className="w-4 h-4 mr-2" />
+                  Commander
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    if (!user) {
+                      toast.error("Veuillez vous connecter pour laisser un avis");
+                      router.push('/auth/signin');
+                      return;
+                    }
+                    
+                    toast.info("Vous pouvez laisser un avis uniquement après avoir complété une commande. Vous pourrez ajouter un avis depuis votre page de commandes.");
+                    
+                    router.push('/dashboard/orders');
+                  }}
+                >
+                  <Star className="w-4 h-4 mr-2" />
+                  Laisser un avis
                 </Button>
               </>
             )}
@@ -275,6 +327,28 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
           onClose={() => setIsOrderFormOpen(false)} 
         />
       )}
+
+      <Separator className="my-12" />
+      
+      <div className="mt-12">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold">Avis sur le vendeur</h2>
+        </div>
+        
+        <ReviewList 
+          userId={typeof listing.seller === 'object' ? listing.seller.id : listing.seller}
+          title=""
+        />
+      </div>
+
+      <MessageDialog
+        open={showMessageDialog}
+        onOpenChange={setShowMessageDialog}
+        recipientId={typeof listing.seller === 'object' ? listing.seller.id : listing.seller}
+        listingId={listing.id}
+        userId={typeof listing.seller === 'object' ? listing.seller.id : listing.seller}
+        title=""
+      />
     </div>
   );
 } 

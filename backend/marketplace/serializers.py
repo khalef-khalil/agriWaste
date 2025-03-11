@@ -109,4 +109,22 @@ class MessageSerializer(serializers.ModelSerializer):
         return obj.sender.username
         
     def get_receiver_username(self, obj):
-        return obj.receiver.username 
+        return obj.receiver.username
+        
+    def validate_receiver(self, value):
+        # Add validation to ensure receiver exists
+        try:
+            receiver = User.objects.get(id=value)
+            print(f"Receiver validation passed: {receiver.username}")
+            return value
+        except User.DoesNotExist:
+            print(f"Receiver validation failed: User with ID {value} does not exist")
+            raise serializers.ValidationError(f"User with ID {value} does not exist")
+            
+    def validate(self, data):
+        # Debug log the full data being validated
+        print(f"Message serializer validate - Full data: {data}")
+        # Make sure sender and receiver are not the same
+        if 'sender' in data and 'receiver' in data and data['sender'] == data['receiver']:
+            raise serializers.ValidationError({"non_field_errors": ["You cannot send a message to yourself."]})
+        return data 

@@ -289,7 +289,42 @@ class MessageViewSet(viewsets.ModelViewSet):
         )
     
     def perform_create(self, serializer):
-        serializer.save(sender=self.request.user)
+        # Add comprehensive error logging
+        try:
+            print(f"Message Creation - User: {self.request.user}, Authenticated: {self.request.user.is_authenticated}")
+            
+            # Log the serializer data
+            print(f"Message Creation - Data: {serializer.validated_data}")
+            
+            # Log the incoming request data
+            print(f"Message Creation - Request Data: {self.request.data}")
+            
+            # Check for common issues
+            if not self.request.user or not self.request.user.is_authenticated:
+                print("Message Creation - Error: User not authenticated")
+                raise serializers.ValidationError({"sender": ["Authentication required."]})
+            
+            # Check if receiver exists
+            from django.contrib.auth.models import User
+            receiver_id = serializer.validated_data.get('receiver')
+            try:
+                receiver = User.objects.get(id=receiver_id)
+                print(f"Message Creation - Receiver found: {receiver.username}")
+            except User.DoesNotExist:
+                print(f"Message Creation - Error: Receiver with ID {receiver_id} does not exist")
+                raise serializers.ValidationError({"receiver": [f"User with ID {receiver_id} does not exist."]})
+            
+            # All checks passed, save the message
+            print("Message Creation - Validation passed, saving message")
+            serializer.save(sender=self.request.user)
+            print("Message Creation - Message saved successfully")
+            
+        except serializers.ValidationError as ve:
+            print(f"Message Creation - Validation Error: {str(ve)}")
+            raise
+        except Exception as e:
+            print(f"Message Creation - Unexpected Error: {str(e)}")
+            raise
     
     @action(detail=False)
     def my_messages(self, request):

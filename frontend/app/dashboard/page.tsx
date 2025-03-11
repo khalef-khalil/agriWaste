@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, ShoppingBag, ListChecks, User, Settings } from 'lucide-react';
+import { ArrowRight, ShoppingBag, ListChecks, User, Settings, MessageSquare, ShoppingCart } from 'lucide-react';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -27,7 +27,7 @@ export default function DashboardPage() {
         </motion.div>
 
         {/* Dashboard Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
           <DashboardCard 
             title="Mon Profil" 
             description="Gérez vos informations personnelles" 
@@ -44,17 +44,31 @@ export default function DashboardPage() {
           />
           <DashboardCard 
             title="Mes Commandes" 
-            description="Consultez et gérez vos commandes" 
-            icon={<ListChecks className="w-5 h-5" />} 
-            href="/dashboard/orders/my-orders" 
+            description="Consultez vos commandes en tant qu'acheteur" 
+            icon={<ShoppingCart className="w-5 h-5" />} 
+            href="/dashboard/orders" 
             delay={0.3}
+          />
+          <DashboardCard 
+            title="Mes Ventes" 
+            description="Gérez les commandes de vos produits" 
+            icon={<ListChecks className="w-5 h-5" />} 
+            href="/dashboard/orders/my-sales" 
+            delay={0.4}
+          />
+          <DashboardCard 
+            title="Messagerie" 
+            description="Communiquez avec les acheteurs et vendeurs" 
+            icon={<MessageSquare className="w-5 h-5" />} 
+            href="/dashboard/messages" 
+            delay={0.5}
           />
           <DashboardCard 
             title="Paramètres" 
             description="Configurez les paramètres de votre compte" 
             icon={<Settings className="w-5 h-5" />} 
             href="/dashboard/settings" 
-            delay={0.4}
+            delay={0.6}
           />
         </div>
 
@@ -62,7 +76,7 @@ export default function DashboardPage() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
+          transition={{ delay: 0.7 }}
           className="border border-border rounded-lg p-6 bg-muted/30"
         >
           <h2 className="text-xl font-semibold mb-4">Bientôt Disponible</h2>
@@ -71,9 +85,9 @@ export default function DashboardPage() {
           </p>
           <ul className="list-disc list-inside space-y-2 text-muted-foreground ml-4">
             <li>Analyses et statistiques pour vos annonces</li>
-            <li>Centre de messagerie pour la communication acheteur-vendeur</li>
             <li>Recommandations personnalisées</li>
-            <li>Système de gestion des avis</li>
+            <li>Système de notifications avancé</li>
+            <li>Exportation de données</li>
           </ul>
         </motion.div>
       </div>
