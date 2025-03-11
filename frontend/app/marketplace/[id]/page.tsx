@@ -7,14 +7,16 @@ import { marketplaceApi, Listing } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { MapPin, Calendar, Package, DollarSign, ArrowLeft, MessageSquare } from "lucide-react";
+import { MapPin, Calendar, Package, DollarSign, ArrowLeft, MessageSquare, Info } from "lucide-react";
 import Link from "next/link";
+import { useAuth } from "@/lib/auth";
 
 export default function ListingDetailPage({ params }: { params: { id: string } }) {
   const [listing, setListing] = useState<Listing | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const router = useRouter();
+  const { user, isAuthenticated } = useAuth();
 
   useEffect(() => {
     const fetchListing = async () => {
@@ -31,6 +33,12 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
 
     fetchListing();
   }, [params.id]);
+
+  // Function to check if the current user is the seller
+  const isCurrentUserSeller = () => {
+    if (!user || !listing || !listing.seller) return false;
+    return user.id === listing.seller.id;
+  };
 
   if (isLoading) {
     return (
@@ -198,13 +206,37 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
           </Card>
 
           <div className="flex gap-4">
-            <Button className="flex-1">
-              Contacter le vendeur <MessageSquare size={16} className="ml-2" />
-            </Button>
-            <Button className="flex-1">
-              Passer commande <DollarSign size={16} className="ml-2" />
-            </Button>
+            {isCurrentUserSeller() ? (
+              <div className="bg-muted p-3 rounded-lg w-full flex items-center justify-center gap-2 text-muted-foreground">
+                <Info size={16} />
+                <span>C'est votre annonce</span>
+              </div>
+            ) : (
+              <>
+                <Button className="flex-1">
+                  Contacter le vendeur <MessageSquare size={16} className="ml-2" />
+                </Button>
+                <Button className="flex-1">
+                  Passer commande <DollarSign size={16} className="ml-2" />
+                </Button>
+              </>
+            )}
           </div>
+
+          {isCurrentUserSeller() && (
+            <div className="flex gap-4 mt-4">
+              <Button className="flex-1" variant="outline" asChild>
+                <Link href={`/dashboard/listings/${listing.id}/edit`}>
+                  Modifier l'annonce
+                </Link>
+              </Button>
+              <Button className="flex-1" variant="outline" asChild>
+                <Link href={`/dashboard/listings/${listing.id}/images`}>
+                  Gérer les images
+                </Link>
+              </Button>
+            </div>
+          )}
         </motion.div>
       </div>
     </div>
