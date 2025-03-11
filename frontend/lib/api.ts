@@ -683,21 +683,21 @@ export const messagesApi = {
 // API functions for marketplace
 export const marketplaceApi = {
   // Get all listings
-  getListings: async (): Promise<Listing[]> => {
-    const response = await api.get<PaginatedResponse<Listing>>('/api/marketplace/listings/');
-    return response.data.results;
+  getListings: async (page: number = 1): Promise<PaginatedResponse<Listing>> => {
+    const response = await api.get<PaginatedResponse<Listing>>(`/api/marketplace/listings/?page=${page}`);
+    return response.data;
   },
 
   // Get active listings
-  getActiveListings: async (): Promise<Listing[]> => {
-    const response = await api.get<PaginatedResponse<Listing>>('/api/marketplace/listings/active/');
-    return response.data.results;
+  getActiveListings: async (page: number = 1): Promise<PaginatedResponse<Listing>> => {
+    const response = await api.get<PaginatedResponse<Listing>>(`/api/marketplace/listings/active/?page=${page}`);
+    return response.data;
   },
 
   // Get listings by country
-  getListingsByCountry: async (country: string): Promise<Listing[]> => {
-    const response = await api.get<PaginatedResponse<Listing>>(`/api/marketplace/listings/by_country/?country=${country}`);
-    return response.data.results;
+  getListingsByCountry: async (country: string, page: number = 1): Promise<PaginatedResponse<Listing>> => {
+    const response = await api.get<PaginatedResponse<Listing>>(`/api/marketplace/listings/by_country/?country=${country}&page=${page}`);
+    return response.data;
   },
 
   // Get listing by ID
@@ -707,9 +707,9 @@ export const marketplaceApi = {
   },
 
   // Get user's listings
-  getMyListings: async (): Promise<Listing[]> => {
-    const response = await api.get<PaginatedResponse<Listing>>('/api/marketplace/listings/my_listings/');
-    return response.data.results;
+  getMyListings: async (page: number = 1): Promise<PaginatedResponse<Listing>> => {
+    const response = await api.get<PaginatedResponse<Listing>>(`/api/marketplace/listings/my_listings/?page=${page}`);
+    return response.data;
   },
 
   // Create a new listing

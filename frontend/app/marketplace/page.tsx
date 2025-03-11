@@ -26,19 +26,26 @@ export default function MarketplacePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<string>("newest");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [hasPreviousPage, setHasPreviousPage] = useState(false);
 
   useEffect(() => {
     const fetchListings = async () => {
       setIsLoading(true);
       try {
-        let fetchedListings;
+        let response;
         if (selectedCountry) {
-          fetchedListings = await marketplaceApi.getListingsByCountry(selectedCountry);
+          response = await marketplaceApi.getListingsByCountry(selectedCountry, currentPage);
         } else {
-          fetchedListings = await marketplaceApi.getActiveListings();
+          response = await marketplaceApi.getActiveListings(currentPage);
         }
-        setListings(fetchedListings);
-        setFilteredListings(fetchedListings);
+        setListings(response.results);
+        setFilteredListings(response.results);
+        setTotalCount(response.count);
+        setHasNextPage(!!response.next);
+        setHasPreviousPage(!!response.previous);
       } catch (error) {
         console.error("Error fetching listings:", error);
       } finally {
@@ -47,7 +54,7 @@ export default function MarketplacePage() {
     };
 
     fetchListings();
-  }, [selectedCountry]);
+  }, [selectedCountry, currentPage]);
 
   useEffect(() => {
     let result = [...listings];
@@ -83,6 +90,11 @@ export default function MarketplacePage() {
 
   const handleCountrySelect = (country: string | null) => {
     setSelectedCountry(country);
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+    window.scrollTo(0, 0);
   };
 
   return (
@@ -187,6 +199,7 @@ export default function MarketplacePage() {
                   onClick={() => {
                     setSearchQuery("");
                     setSelectedCountry(null);
+                    setCurrentPage(1);
                   }}
                   variant="outline"
                 >
@@ -194,24 +207,47 @@ export default function MarketplacePage() {
                 </Button>
               </motion.div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <AnimatePresence>
-                  {filteredListings.map((listing, index) => (
-                    <motion.div
-                      key={listing.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{
-                        duration: 0.3,
-                        delay: index * 0.05,
-                      }}
-                    >
-                      <ListingCard listing={listing} />
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <AnimatePresence>
+                    {filteredListings.map((listing, index) => (
+                      <motion.div
+                        key={listing.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{
+                          duration: 0.3,
+                          delay: index * 0.05,
+                        }}
+                      >
+                        <ListingCard listing={listing} />
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+
+                {/* Pagination controls */}
+                <div className="mt-8 flex justify-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={!hasPreviousPage}
+                  >
+                    Page précédente
+                  </Button>
+                  <span className="flex items-center px-4 py-2 bg-muted rounded-md">
+                    Page {currentPage} sur {Math.ceil(totalCount / 15)}
+                  </span>
+                  <Button
+                    variant="outline"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={!hasNextPage}
+                  >
+                    Page suivante
+                  </Button>
+                </div>
+              </>
             )}
           </>
         )}

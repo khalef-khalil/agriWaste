@@ -664,8 +664,8 @@ class Command(BaseCommand):
         count = self.options.get('orders', 15)  # Default to 15 if not specified
         self.stdout.write(f'Creating {count} orders...')
         
-        # Only use active listings for orders
-        active_listings = [listing for listing in self.listings if listing.status in ['ACTIVE', 'SOLD']]
+        # Get all active listings directly from the database
+        active_listings = list(WasteListing.objects.filter(status='ACTIVE'))
         
         if not active_listings:
             self.stdout.write(self.style.WARNING('No active listings available to create orders'))
@@ -724,13 +724,11 @@ class Command(BaseCommand):
                 updated_at=order_created + datetime.timedelta(days=random.randint(1, 10))
             )
             
-            # Mark listing as sold if the order is completed
-            if status == 'COMPLETED' and listing.status == 'ACTIVE':
-                listing.status = 'SOLD'
-                listing.save()
-            
             orders_created += 1
             
+            if orders_created % 5 == 0:
+                self.stdout.write(f" - Created {orders_created} orders...")
+        
         self.stdout.write(f'Created {orders_created} orders')
 
     def handle_reviews(self):
