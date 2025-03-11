@@ -19,6 +19,13 @@ api.interceptors.request.use(
           console.log('Adding token to create listing request:', token.substring(0, 10) + '...');
           console.log('Full headers:', config.headers);
         }
+        
+        // Debug token for create order
+        if (config.url === '/api/marketplace/orders/' && config.method === 'post') {
+          console.log('Adding token to create order request:', token.substring(0, 10) + '...');
+          console.log('Full headers:', config.headers);
+          console.log('Request data:', JSON.stringify(config.data, null, 2));
+        }
       } else {
         console.warn('No auth token found in localStorage');
       }
@@ -93,16 +100,19 @@ export interface Listing {
   quantity: number;
   waste_type: number;
   waste_type_name: string;
-  seller: UserProfile;
+  seller: UserProfile | number;
+  seller_username?: string;
   location: string;
   country: string;
   status: string;
   featured: boolean;
+  is_active?: boolean;
   available_from: string;
   available_until?: string;
   created_at: string;
   updated_at: string;
   images: ListingImage[];
+  quantity_unit?: string;
 }
 
 export interface ListingImage {
@@ -174,6 +184,334 @@ export const catalogApi = {
     const response = await api.get<PaginatedResponse<ResourceDocument>>(`/api/waste-catalog/documents/?waste_type=${wasteTypeId}`);
     return response.data.results;
   }
+};
+
+// Order related interfaces
+export interface Order {
+  id: number;
+  // These can be either numbers (IDs) or full objects
+  listing: number | Listing;
+  listing_details?: Listing;
+  buyer: number | UserProfile;
+  buyer_details?: UserProfile;
+  seller: number | UserProfile;
+  seller_details?: UserProfile;
+  quantity: number | string;
+  total_price: number;
+  status: OrderStatus;
+  notes?: string;
+  shipping_address?: string;
+  shipping_method?: string;
+  payment_method?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export type OrderStatus = 'pending' | 'accepted' | 'rejected' | 'shipped' | 'delivered' | 'completed' | 'cancelled';
+
+export interface CreateOrderRequest {
+  listing: number;
+  quantity: number;
+  buyer: number;
+  seller: number;
+  total_price: number;
+  notes?: string;
+  shipping_address?: string;
+  shipping_method?: string;
+  payment_method?: string;
+}
+
+export interface UpdateOrderStatusRequest {
+  status: OrderStatus;
+  notes?: string;
+}
+
+// Marketplace API - Orders
+export const ordersApi = {
+  // Create a new order
+  createOrder: async (data: CreateOrderRequest): Promise<Order> => {
+    try {
+      // Validate required fields
+      if (!data.buyer) {
+        throw new Error('Buyer ID is required');
+      }
+      
+      if (!data.seller) {
+        throw new Error('Seller ID is required');
+      }
+      
+      if (!data.total_price) {
+        throw new Error('Total price is required');
+      }
+      
+      console.log('Sending order data to API:', data);
+      const response = await api.post('/api/marketplace/orders/', data);
+      console.log('Order creation successful, response:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error creating order:', error);
+      if (error.response) {
+        console.error('Error response status:', error.response.status);
+        console.error('Error response data:', error.response.data);
+      }
+      throw error;
+    }
+  },
+
+  // Get user's orders (as buyer)
+  getMyOrders: async (): Promise<PaginatedResponse<Order>> => {
+    try {
+      const response = await api.get('/api/marketplace/orders/my_orders/');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching my orders:', error);
+      throw error;
+    }
+  },
+
+  // Get user's sales (as seller)
+  getMySales: async (): Promise<PaginatedResponse<Order>> => {
+    try {
+      const response = await api.get('/api/marketplace/orders/my_sales/');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching my sales:', error);
+      throw error;
+    }
+  },
+
+  // Get order details with retry functionality
+  getOrderById: async (id: number, retryCount = 0): Promise<Order> => {
+    try {
+      console.log(`Fetching order with ID: ${id}${retryCount > 0 ? ` (retry ${retryCount})` : ''}`);
+      const response = await api.get(`/api/marketplace/orders/${id}/`);
+      
+      // Debug the actual structure of the response data
+      console.log(`Order ${id} response:`, response.data);
+      console.log(`Order ${id} response raw structure:`, JSON.stringify(response.data));
+      
+      // Create a structured order object
+      const orderData = response.data;
+      
+      // Check if listing is an object or ID and handle accordingly
+      if (orderData.listing && typeof orderData.listing === 'object') {
+        console.log(`Order ${id}: Listing is an object`, orderData.listing);
+        // If listing is an object but listing_details isn't set, copy it
+        if (!orderData.listing_details) {
+          orderData.listing_details = {...orderData.listing};
+          console.log(`Order ${id}: Created listing_details from listing object`);
+        }
+      } else {
+        console.error(`Order ${id} missing listing_details`);
+      }
+      
+      // Check if buyer is an object or ID and handle accordingly
+      if (orderData.buyer && typeof orderData.buyer === 'object') {
+        console.log(`Order ${id}: Buyer is an object`, orderData.buyer);
+        // If buyer is an object but buyer_details isn't set, copy it
+        if (!orderData.buyer_details) {
+          orderData.buyer_details = {...orderData.buyer};
+          console.log(`Order ${id}: Created buyer_details from buyer object`);
+        }
+      } else {
+        console.error(`Order ${id} missing buyer_details`);
+      }
+      
+      // Check for seller or try to extract from listing
+      if (orderData.seller && typeof orderData.seller === 'object') {
+        console.log(`Order ${id}: Seller is an object`, orderData.seller);
+        // If seller is an object but seller_details isn't set, copy it
+        if (!orderData.seller_details) {
+          orderData.seller_details = {...orderData.seller};
+          console.log(`Order ${id}: Created seller_details from seller object`);
+        }
+      } else if (orderData.listing && typeof orderData.listing === 'object' && orderData.listing.seller) {
+        // Try to get seller from listing
+        console.log(`Order ${id}: Extracting seller from listing`, orderData.listing.seller);
+        // If seller_details isn't set, use the seller from listing
+        if (!orderData.seller_details) {
+          orderData.seller_details = {...orderData.listing.seller};
+          orderData.seller = orderData.listing.seller.id;
+          console.log(`Order ${id}: Created seller_details from listing.seller`);
+        }
+      } else {
+        console.error(`Order ${id} missing seller_details`);
+      }
+      
+      // If we still have missing fields and have retries left, try again
+      const missingFields = [];
+      if (!orderData.listing_details) missingFields.push('listing_details');
+      if (!orderData.buyer_details) missingFields.push('buyer_details');
+      if (!orderData.seller_details) missingFields.push('seller_details');
+      
+      if (missingFields.length > 0 && retryCount < 2) {
+        console.log(`Retrying order ${id} fetch due to missing fields: ${missingFields.join(', ')}`);
+        // Wait a moment before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return ordersApi.getOrderById(id, retryCount + 1);
+      }
+      
+      return orderData;
+    } catch (error) {
+      console.error(`Error fetching order #${id}:`, error);
+      throw error;
+    }
+  },
+
+  // Update order status
+  updateOrderStatus: async (id: number, data: UpdateOrderStatusRequest): Promise<Order> => {
+    try {
+      const response = await api.post(`/api/marketplace/orders/${id}/update_status/`, data);
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating order #${id} status:`, error);
+      throw error;
+    }
+  },
+
+  // Attempt to repair incomplete order data by fetching related entities
+  repairOrderData: async (order: Order): Promise<Order> => {
+    console.log(`Attempting to repair incomplete order data for order #${order.id}`);
+    console.log(`Order structure:`, order);
+    
+    // Create a deep copy of the order to avoid mutating the original
+    const repairedOrder = JSON.parse(JSON.stringify(order)) as Order;
+    let fetchedListingDetails = null;
+    
+    try {
+      // Normalize status if it's in uppercase
+      if (repairedOrder.status && typeof repairedOrder.status === 'string') {
+        const upperStatus = repairedOrder.status.toUpperCase();
+        // Check if we have an uppercase status that needs conversion
+        if (upperStatus === 'PENDING' || 
+            upperStatus === 'ACCEPTED' || 
+            upperStatus === 'REJECTED' || 
+            upperStatus === 'SHIPPED' || 
+            upperStatus === 'DELIVERED' || 
+            upperStatus === 'COMPLETED' || 
+            upperStatus === 'CANCELLED') {
+          // Convert to lowercase for consistency
+          repairedOrder.status = repairedOrder.status.toLowerCase() as OrderStatus;
+          console.log(`Normalized order #${order.id} status from ${order.status} to ${repairedOrder.status}`);
+        }
+      }
+      
+      // Check if seller_details exists but is empty
+      const sellerDetailsEmpty = 
+        repairedOrder.seller_details && 
+        typeof repairedOrder.seller_details === 'object' && 
+        Object.keys(repairedOrder.seller_details).length === 0;
+      
+      // If we have no seller or empty seller_details, try to extract from other sources
+      if (!repairedOrder.seller_details || sellerDetailsEmpty) {
+        console.log(`Order #${order.id} is missing seller_details or has empty seller_details`);
+        
+        // Check if listing is already an object with properties we need
+        if (typeof repairedOrder.listing === 'object' && repairedOrder.listing !== null) {
+          // If listing is an object, use it as listing_details
+          fetchedListingDetails = repairedOrder.listing;
+          if (!repairedOrder.listing_details) {
+            repairedOrder.listing_details = repairedOrder.listing;
+            console.log(`Using existing listing object as listing_details for order #${order.id}`);
+          }
+        } 
+        // If listing is an ID, try to fetch the details
+        else {
+          const listingId = getIdSafely(repairedOrder.listing);
+          if (listingId) {
+            console.log(`Fetching listing details for order #${order.id}, listing ID: ${listingId}`);
+            try {
+              fetchedListingDetails = await marketplaceApi.getListingById(listingId);
+              repairedOrder.listing_details = fetchedListingDetails;
+              console.log(`Successfully fetched listing details for order #${order.id}`);
+            } catch (error) {
+              console.error(`Failed to fetch listing details for order #${order.id}:`, error);
+            }
+          }
+        }
+        
+        // Now that we have the listing details, try to extract seller information
+        if (fetchedListingDetails || repairedOrder.listing_details) {
+          const listingData = fetchedListingDetails || repairedOrder.listing_details;
+          
+          // If listing has seller as an object, use it
+          if (listingData && typeof listingData.seller === 'object' && listingData.seller) {
+            console.log(`Using seller from listing for order #${order.id}:`, listingData.seller);
+            repairedOrder.seller_details = listingData.seller;
+            
+            // If seller is missing, set it to the seller's ID
+            if (!repairedOrder.seller) {
+              repairedOrder.seller = listingData.seller.id;
+            }
+          }
+          // If listing has seller_username but not a seller object, create a basic seller object
+          else if (listingData && listingData.seller_username) {
+            console.log(`Creating seller from seller_username for order #${order.id}: ${listingData.seller_username}`);
+            repairedOrder.seller_details = {
+              id: typeof listingData.seller === 'number' ? listingData.seller : 0,
+              username: listingData.seller_username,
+              email: '',
+              first_name: listingData.seller_username,
+              last_name: '',
+              user_type: 'seller',
+              profile_image: ''
+            };
+            
+            // If seller is missing, set it to the seller's ID if available
+            if (!repairedOrder.seller && typeof listingData.seller === 'number') {
+              repairedOrder.seller = listingData.seller;
+            }
+          }
+        }
+      }
+      
+      // Check if buyer_details exists but is empty
+      const buyerDetailsEmpty = 
+        repairedOrder.buyer_details && 
+        typeof repairedOrder.buyer_details === 'object' && 
+        Object.keys(repairedOrder.buyer_details).length === 0;
+      
+      // Handle buyer data - if buyer is an object, use it as buyer_details
+      if (typeof repairedOrder.buyer === 'object' && repairedOrder.buyer !== null) {
+        if (!repairedOrder.buyer_details) {
+          repairedOrder.buyer_details = repairedOrder.buyer;
+          console.log(`Using existing buyer object as buyer_details for order #${order.id}`);
+        }
+      } else {
+        // For buyer ID, create a placeholder
+        const buyerId = getIdSafely(repairedOrder.buyer);
+        if (buyerId && !repairedOrder.buyer_details) {
+          console.log(`Creating placeholder for buyer details, ID: ${buyerId}`);
+          repairedOrder.buyer_details = {
+            id: buyerId,
+            username: `User ${buyerId}`,
+            email: '',
+            first_name: 'Acheteur',
+            last_name: `#${buyerId}`,
+            user_type: 'buyer'
+          };
+        }
+      }
+      
+      console.log("Repaired order:", repairedOrder);
+      return repairedOrder;
+    } catch (error) {
+      console.error(`Error repairing order #${order.id}:`, error);
+      return order; // Return original order if repair fails
+    }
+  },
+
+  // Delete an order (for maintenance/cleanup of incomplete orders)
+  deleteOrder: async (id: number): Promise<void> => {
+    try {
+      console.log(`Deleting order with ID: ${id}`);
+      await api.delete(`/api/marketplace/orders/${id}/`);
+      console.log(`Successfully deleted order ${id}`);
+    } catch (error) {
+      console.error(`Error deleting order #${id}:`, error);
+      throw error;
+    }
+  },
 };
 
 // API functions for marketplace
@@ -334,7 +672,9 @@ export const marketplaceApi = {
   // Delete an image from a listing
   deleteListingImage: async (imageId: number): Promise<void> => {
     await api.delete(`/api/marketplace/images/${imageId}/`);
-  }
+  },
+
+  ...ordersApi,
 };
 
 export default api; 

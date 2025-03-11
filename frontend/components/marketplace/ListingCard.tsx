@@ -6,6 +6,14 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { MapPin, Package } from "lucide-react";
 import { Listing } from "@/lib/api";
 
+// Helper function to safely get seller information
+const getSellerDisplayName = (listing: Listing): string => {
+  if (typeof listing.seller === 'object' && listing.seller) {
+    return `${listing.seller.first_name || ''} ${listing.seller.last_name || ''}`.trim() || listing.seller.username;
+  }
+  return listing.seller_username || `Vendeur #${listing.seller}`;
+};
+
 interface ListingCardProps {
   listing: Listing;
 }
@@ -52,6 +60,9 @@ export default function ListingCard({ listing }: ListingCardProps) {
           </div>
           <div className="text-xs bg-muted px-2 py-1 rounded-full">
             {listing.waste_type_name}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {getSellerDisplayName(listing)}
           </div>
         </CardFooter>
       </Card>

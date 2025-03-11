@@ -46,7 +46,7 @@ export default function DashboardPage() {
             title="Mes Commandes" 
             description="Consultez et gérez vos commandes" 
             icon={<ListChecks className="w-5 h-5" />} 
-            href="/dashboard/orders" 
+            href="/dashboard/orders/my-orders" 
             delay={0.3}
           />
           <DashboardCard 

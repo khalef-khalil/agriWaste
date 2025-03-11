@@ -10,11 +10,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { MapPin, Calendar, Package, DollarSign, ArrowLeft, MessageSquare, Info } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
+import { CreateOrderForm } from "@/components/orders/create-order-form";
+import { toast } from "sonner";
 
 export default function ListingDetailPage({ params }: { params: { id: string } }) {
   const [listing, setListing] = useState<Listing | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [isOrderFormOpen, setIsOrderFormOpen] = useState(false);
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
 
@@ -216,8 +219,24 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
                 <Button className="flex-1">
                   Contacter le vendeur <MessageSquare size={16} className="ml-2" />
                 </Button>
-                <Button className="flex-1">
-                  Passer commande <DollarSign size={16} className="ml-2" />
+                <Button 
+                  className="flex-1"
+                  onClick={() => {
+                    if (!isAuthenticated) {
+                      router.push("/login?redirect=" + encodeURIComponent(`/marketplace/${params.id}`));
+                      return;
+                    }
+                    
+                    if (isCurrentUserSeller()) {
+                      toast.error("Vous ne pouvez pas commander votre propre annonce");
+                      return;
+                    }
+                    
+                    setIsOrderFormOpen(true);
+                  }}
+                  disabled={isCurrentUserSeller()}
+                >
+                  Passer commande
                 </Button>
               </>
             )}
@@ -239,6 +258,23 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
           )}
         </motion.div>
       </div>
+
+      <div className="flex flex-col md:flex-row gap-4 mt-6">
+        <Button variant="outline" asChild>
+          <Link href="/marketplace">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Retour au marché
+          </Link>
+        </Button>
+      </div>
+
+      {listing && (
+        <CreateOrderForm 
+          listing={listing} 
+          isOpen={isOrderFormOpen} 
+          onClose={() => setIsOrderFormOpen(false)} 
+        />
+      )}
     </div>
   );
 } 

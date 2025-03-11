@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 // Form schema
 const loginSchema = z.object({
   username: z.string().min(3, 'Le nom d\'utilisateur doit contenir au moins 3 caractères'),
-  password: z.string().min(6, 'Le mot de passe doit contenir au moins 6 caractères'),
+  password: z.string().min(5, 'Le mot de passe doit contenir au moins 5 caractères'),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
