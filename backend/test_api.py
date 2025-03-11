@@ -23,7 +23,7 @@ from datetime import date, timedelta
 
 # Configuration
 BASE_URL = "http://localhost:8000"
-ADMIN_USER = {"username": "admin", "password": "admin"}
+ADMIN_USER = {"username": "admin", "password": "admin123"}
 VERBOSE = True  # Set to True for detailed logging
 
 # Country choices for marketplace
@@ -712,7 +712,7 @@ class APITester:
         headers = {'Authorization': f"Token {self.tokens['researcher']}"}
         
         review_data = {
-            'order_id': self.order_id,
+            'listing_id': self.listing_id,
             'rating': 5,
             'comment': 'Excellent quality corn stalks, fast delivery!'
         }

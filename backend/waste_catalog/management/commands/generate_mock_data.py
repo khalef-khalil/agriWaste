@@ -734,65 +734,81 @@ class Command(BaseCommand):
         self.stdout.write(f'Created {orders_created} orders')
 
     def handle_reviews(self):
-        """Create reviews."""
-        count = self.options.get('reviews', 10)  # Default to 10 if not specified
+        """Create reviews for listings."""
+        count = self.options.get('reviews', 30)  # Default to 30 reviews
         self.stdout.write(f'Creating {count} reviews...')
         
-        # Only use completed orders for reviews
-        completed_orders = Order.objects.filter(status='COMPLETED')
+        # Get all active listings
+        listings = WasteListing.objects.filter(status='ACTIVE')
         
-        if not completed_orders:
-            self.stdout.write(self.style.WARNING('No completed orders available to create reviews'))
+        if not listings:
+            self.stdout.write(self.style.WARNING('No active listings available to create reviews'))
             return
             
         reviews_created = 0
         
-        for i in range(min(count, len(completed_orders))):
-            order = completed_orders[i]
+        # Ensure each listing gets at least one review
+        for listing in listings:
+            # Get random users excluding the seller
+            potential_reviewers = [user for user in self.users if user != listing.seller]
+            if not potential_reviewers:
+                continue
+                
+            # Create 1-3 reviews per listing
+            num_reviews = random.randint(1, 3)
+            reviewers = random.sample(potential_reviewers, min(num_reviews, len(potential_reviewers)))
             
-            # Realistic rating distribution weighted towards positive
-            rating_weights = {5: 0.4, 4: 0.3, 3: 0.15, 2: 0.1, 1: 0.05}
-            rating = random.choices(
-                list(rating_weights.keys()), 
-                weights=list(rating_weights.values()), 
-                k=1
-            )[0]
+            for reviewer in reviewers:
+                # Realistic rating distribution weighted towards positive
+                rating_weights = {5: 0.4, 4: 0.3, 3: 0.15, 2: 0.1, 1: 0.05}
+                rating = random.choices(
+                    list(rating_weights.keys()), 
+                    weights=list(rating_weights.values()), 
+                    k=1
+                )[0]
+                
+                # Create a more realistic review comment based on the rating
+                if rating >= 4:
+                    comment = random.choice([
+                        f"Très satisfait de la qualité de {listing.waste_type.name}. Communication facile avec le vendeur.",
+                        f"Excellent produit, conforme à la description. Je recommande ce vendeur.",
+                        f"Parfait pour mon projet de recherche. Matériau de très bonne qualité.",
+                        f"Service impeccable et produit correspondant parfaitement à nos besoins.",
+                        f"Collaboration très professionnelle. Le {listing.waste_type.name} était exactement ce dont nous avions besoin."
+                    ])
+                elif rating == 3:
+                    comment = random.choice([
+                        f"Produit correct mais communication un peu lente.",
+                        f"Qualité acceptable mais pourrait être améliorée.",
+                        f"Correspond à la description mais le prix est un peu élevé.",
+                        f"Transaction correcte dans l'ensemble, rien à signaler de particulier.",
+                        f"Satisfaisant mais pas exceptionnel."
+                    ])
+                else:
+                    comment = random.choice([
+                        f"Déçu par la qualité proposée, ne correspond pas exactement à la description.",
+                        f"Problèmes de communication avec le vendeur.",
+                        f"Matériau de qualité inférieure à ce qui était annoncé.",
+                        f"Je ne recommande pas ce vendeur, expérience décevante.",
+                        f"Trop cher pour la qualité proposée."
+                    ])
+                
+                Review.objects.create(
+                    reviewer=reviewer,
+                    listing=listing,
+                    rating=rating,
+                    comment=comment,
+                    created_at=timezone.now() - datetime.timedelta(days=random.randint(1, 90))
+                )
+                
+                reviews_created += 1
+                
+                if reviews_created >= count:
+                    break
             
-            # Create a more realistic review comment based on the rating
-            if rating >= 4:
-                comment = random.choice([
-                    f"Très satisfait de la qualité de {order.listing.waste_type.name}. Transaction facile et livraison rapide.",
-                    f"Excellent produit, conforme à la description. Je recommande ce vendeur.",
-                    f"Parfait pour mon projet de recherche. Matériau de très bonne qualité.",
-                    f"Service impeccable et produit correspondant parfaitement à nos besoins.",
-                    f"Collaboration très professionnelle. Le {order.listing.waste_type.name} était exactement ce dont nous avions besoin."
-                ])
-            elif rating == 3:
-                comment = random.choice([
-                    f"Produit correct mais délai de livraison un peu long.",
-                    f"Qualité acceptable mais pourrait être améliorée.",
-                    f"Correspond à la description mais le conditionnement laissait à désirer.",
-                    f"Transaction correcte dans l'ensemble, rien à signaler de particulier.",
-                    f"Satisfaisant mais pas exceptionnel."
-                ])
-            else:
-                comment = random.choice([
-                    f"Déçu par la qualité du produit, ne correspond pas exactement à la description.",
-                    f"Problèmes de communication avec le vendeur et retard de livraison.",
-                    f"Matériau de qualité inférieure à ce qui était annoncé.",
-                    f"Je ne recommande pas ce vendeur, expérience décevante.",
-                    f"Trop cher pour la qualité fournie. Ne rachèterai pas."
-                ])
-            
-            Review.objects.create(
-                order=order,
-                rating=rating,
-                comment=comment,
-                created_at=order.updated_at + datetime.timedelta(days=random.randint(1, 14))
-            )
-            
-            reviews_created += 1
-            
+            if reviews_created >= count:
+                break
+        
         self.stdout.write(f'Created {reviews_created} reviews')
 
     def create_messages(self, count):

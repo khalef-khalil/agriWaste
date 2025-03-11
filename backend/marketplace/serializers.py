@@ -87,15 +87,19 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         return None
 
 class ReviewSerializer(serializers.ModelSerializer):
-    order_id = serializers.PrimaryKeyRelatedField(source='order', queryset=Order.objects.all())
+    listing_id = serializers.PrimaryKeyRelatedField(source='listing', queryset=WasteListing.objects.all())
     reviewer_username = serializers.SerializerMethodField()
     
     class Meta:
         model = Review
-        fields = ['id', 'order_id', 'rating', 'comment', 'created_at', 'reviewer_username']
+        fields = ['id', 'listing_id', 'rating', 'comment', 'created_at', 'reviewer_username']
         
     def get_reviewer_username(self, obj):
-        return obj.order.buyer.username
+        return obj.reviewer.username
+        
+    def create(self, validated_data):
+        validated_data['reviewer'] = self.context['request'].user
+        return super().create(validated_data)
 
 class MessageSerializer(serializers.ModelSerializer):
     sender_username = serializers.SerializerMethodField()

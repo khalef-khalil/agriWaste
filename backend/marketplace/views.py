@@ -249,25 +249,19 @@ class ReviewViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['update', 'partial_update', 'destroy']:
             permission_classes = [IsOwnerOrReadOnly]
-        else:
+        elif self.action == 'create':
             permission_classes = [permissions.IsAuthenticated]
+        else:
+            # Allow any user (including unauthenticated) to read reviews
+            permission_classes = [AllowAnyReadOnly]
         return [permission() for permission in permission_classes]
     
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context.update({'request': self.request})
+        return context
+    
     def perform_create(self, serializer):
-        order = serializer.validated_data.get('order')
-        
-        # Check if the user is the buyer
-        if order.buyer != self.request.user:
-            raise serializers.ValidationError("You can only review orders you've placed")
-        
-        # Check if the order is completed
-        if order.status != 'COMPLETED':
-            raise serializers.ValidationError("You can only review completed orders")
-        
-        # Check if the order has already been reviewed
-        if hasattr(order, 'review'):
-            raise serializers.ValidationError("This order has already been reviewed")
-        
         serializer.save()
 
 class MessageViewSet(viewsets.ModelViewSet):

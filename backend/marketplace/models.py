@@ -90,16 +90,18 @@ class Order(models.Model):
         ordering = ['-created_at']
 
 class Review(models.Model):
-    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='review')
+    reviewer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews_given')
+    listing = models.ForeignKey(WasteListing, on_delete=models.CASCADE, related_name='reviews')
     rating = models.IntegerField()
     comment = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
-        return f"Review for Order #{self.order.id}"
+        return f"Review by {self.reviewer.username} for {self.listing.title}"
 
     class Meta:
         ordering = ['-created_at']
+        unique_together = ('reviewer', 'listing')  # Prevent duplicate reviews
 
 class Message(models.Model):
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages')
