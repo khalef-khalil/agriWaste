@@ -733,18 +733,17 @@ class APITester:
         url = f"{BASE_URL}/api/marketplace/messages/"
         headers = {'Authorization': f"Token {self.tokens['researcher']}"}
         
-        # Use the IDs directly from self.user_ids
-        researcher_id = self.user_ids['researcher']
-        farmer_id = self.user_ids['farmer']
+        # Get the farmer's ID as the receiver and ensure it's an integer
+        farmer_id = int(self.user_ids['farmer'])
         
         message_data = {
-            'sender': researcher_id,  # Add the sender ID explicitly
             'receiver': farmer_id,
             'listing': self.listing_id,
             'subject': 'Question about corn stalks',
             'content': 'Are these stalks suitable for research purposes?'
         }
         
+        print(f"Sending message data: {message_data}")  # Debug print
         response = requests.post(url, json=message_data, headers=headers)
         if not assert_status_code(response, 201):
             return False

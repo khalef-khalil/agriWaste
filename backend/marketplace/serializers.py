@@ -108,6 +108,7 @@ class MessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Message
         fields = '__all__'
+        read_only_fields = ['sender']  # Make sender read-only since it's set from the authenticated user
         
     def get_sender_username(self, obj):
         return obj.sender.username
@@ -116,19 +117,40 @@ class MessageSerializer(serializers.ModelSerializer):
         return obj.receiver.username
         
     def validate_receiver(self, value):
-        # Add validation to ensure receiver exists
+        print(f"Validating receiver value: {value} (type: {type(value)})")  # Debug print
         try:
-            receiver = User.objects.get(id=value)
-            print(f"Receiver validation passed: {receiver.username}")
-            return value
+            # Handle different types of input
+            if isinstance(value, User):
+                receiver = value
+            elif isinstance(value, dict) and 'id' in value:
+                receiver = User.objects.get(id=int(value['id']))
+            else:
+                receiver = User.objects.get(id=int(value))
+            
+            print(f"Receiver validation passed: {receiver.username} (ID: {receiver.id})")
+            return receiver  # Return the User instance instead of just the ID
+        except (ValueError, TypeError, AttributeError) as e:
+            print(f"Receiver validation failed - invalid format: {str(e)}")
+            raise serializers.ValidationError(f"Invalid receiver ID format: {value}")
         except User.DoesNotExist:
-            print(f"Receiver validation failed: User with ID {value} does not exist")
+            print(f"Receiver validation failed - user not found: ID {value}")
             raise serializers.ValidationError(f"User with ID {value} does not exist")
             
     def validate(self, data):
-        # Debug log the full data being validated
-        print(f"Message serializer validate - Full data: {data}")
-        # Make sure sender and receiver are not the same
-        if 'sender' in data and 'receiver' in data and data['sender'] == data['receiver']:
+        print(f"Message serializer validate - Full data: {data}")  # Debug print
+        
+        # Get the current user from the context
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            raise serializers.ValidationError({"sender": ["Authentication required."]})
+            
+        # Make sure receiver is not the sender
+        if data.get('receiver') == request.user:  # Compare User instances
             raise serializers.ValidationError({"non_field_errors": ["You cannot send a message to yourself."]})
-        return data 
+            
+        return data
+        
+    def create(self, validated_data):
+        # Set the sender to the current user
+        validated_data['sender'] = self.context['request'].user
+        return super().create(validated_data) 

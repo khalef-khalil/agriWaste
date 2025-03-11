@@ -121,6 +121,10 @@ class Command(BaseCommand):
         self.handle_orders()
         self.handle_reviews()
         
+        # Generate messages
+        message_count = self.options.get('messages', 60)  # Default to 60 messages
+        self.create_messages(message_count)
+        
         self.stdout.write(self.style.SUCCESS("Mock data generation completed successfully."))
 
     def clear_existing_data(self):
