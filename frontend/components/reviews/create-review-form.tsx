@@ -11,14 +11,16 @@ import { Loader2, StarIcon } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface CreateReviewFormProps {
-  order: Order;
+  listingId: number;
+  listingTitle: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onReviewSubmitted: () => void;
 }
 
 export default function CreateReviewForm({
-  order,
+  listingId,
+  listingTitle,
   open,
   onOpenChange,
   onReviewSubmitted
@@ -39,18 +41,11 @@ export default function CreateReviewForm({
       return;
     }
 
-    // Check if this is a valid order
-    if (!order.id || order.id === 0) {
-      toast.error("Vous ne pouvez laisser un avis que sur une commande complétée");
-      console.error("Cannot submit review without a valid order ID. Order ID is required by the backend.");
-      return;
-    }
-
     try {
       setIsSubmitting(true);
 
       const reviewData = {
-        order: typeof order.id === 'number' ? order.id : parseInt(order.id.toString()),
+        listing_id: listingId,
         rating,
         comment: comment.trim()
       };
@@ -67,8 +62,8 @@ export default function CreateReviewForm({
       
       // Handle specific error responses from the API
       if (error.response && error.response.data) {
-        if (error.response.data.order_id) {
-          toast.error("Ordre invalide: " + error.response.data.order_id.join(', '));
+        if (error.response.data.listing_id) {
+          toast.error("Annonce invalide: " + error.response.data.listing_id.join(', '));
         } else if (error.response.data.non_field_errors) {
           toast.error(error.response.data.non_field_errors.join(', '));
         } else {
@@ -117,16 +112,6 @@ export default function CreateReviewForm({
     tap: { scale: 0.95 }
   };
 
-  // Get title for the dialog based on context
-  const getReviewTitle = () => {
-    const isFromListing = order.id === 0;
-    if (isFromListing) {
-      return order.listing_details?.title || "Annonce";
-    } else {
-      return `Commande #${order.id}`;
-    }
-  };
-
   return (
     <Dialog open={open} onOpenChange={(newOpen) => {
       if (!newOpen) {
@@ -147,10 +132,10 @@ export default function CreateReviewForm({
         >
           <motion.div variants={itemVariants} className="text-center">
             <p className="text-sm text-muted-foreground mb-2">
-              Évaluez votre expérience avec ce vendeur
+              Évaluez votre expérience avec cette annonce
             </p>
             <p className="font-medium mb-4">
-              {getReviewTitle()}
+              {listingTitle}
             </p>
             <div className="flex justify-center space-x-1 mt-2">
               {[1, 2, 3, 4, 5].map((star) => (

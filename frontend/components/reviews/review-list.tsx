@@ -12,14 +12,12 @@ import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 
 interface ReviewListProps {
-  userId?: number;
-  listingId?: number;
+  listingId: number;
   title?: string;
   maxItems?: number;
 }
 
 export default function ReviewList({ 
-  userId, 
   listingId, 
   title = "Avis", 
   maxItems 
@@ -32,13 +30,7 @@ export default function ReviewList({
     const fetchReviews = async () => {
       try {
         setIsLoading(true);
-        let fetchedReviews: Review[] = [];
-        
-        if (userId) {
-          fetchedReviews = await marketplaceApi.getUserReviews(userId);
-        } else if (listingId) {
-          fetchedReviews = await marketplaceApi.getListingReviews(listingId);
-        }
+        const fetchedReviews = await marketplaceApi.getListingReviews(listingId);
         
         // Sort by date (newest first)
         fetchedReviews.sort((a, b) => 
@@ -62,8 +54,10 @@ export default function ReviewList({
       }
     };
     
-    fetchReviews();
-  }, [userId, listingId, maxItems]);
+    if (listingId) {
+      fetchReviews();
+    }
+  }, [listingId, maxItems]);
   
   const getInitials = (user?: UserProfile | number) => {
     if (!user || typeof user === 'number') return '??';
@@ -134,50 +128,37 @@ export default function ReviewList({
         ) : (
           <AnimatePresence>
             <motion.div className="space-y-4">
-              {reviews.map((review, index) => {
-                const reviewer = typeof review.reviewer === 'object' 
-                  ? review.reviewer 
-                  : review.reviewer_details;
-                  
-                return (
-                  <motion.div
-                    key={review.id}
-                    custom={index}
-                    initial="hidden"
-                    animate="visible"
-                    exit="exit"
-                    variants={reviewVariants}
-                    className="p-4 rounded-lg bg-muted/50"
-                  >
-                    <div className="flex items-start gap-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage
-                          src={reviewer?.profile_image || ''}
-                          alt={reviewer?.username || 'User'}
-                        />
-                        <AvatarFallback>{getInitials(reviewer)}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 justify-between">
-                          <div className="font-medium">
-                            {reviewer?.first_name} {reviewer?.last_name}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {renderStars(review.rating)}
-                            <span className="text-xs text-muted-foreground">
-                              {formatDistanceToNow(new Date(review.created_at), {
-                                addSuffix: true,
-                                locale: fr
-                              })}
-                            </span>
-                          </div>
+              {reviews.map((review, index) => (
+                <motion.div
+                  key={review.id}
+                  custom={index}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  variants={reviewVariants}
+                  className="p-4 rounded-lg bg-muted/50"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 justify-between">
+                        <div className="font-medium">
+                          {review.reviewer_username}
                         </div>
-                        <p className="mt-2 text-sm">{review.comment}</p>
+                        <div className="flex items-center gap-2">
+                          {renderStars(review.rating)}
+                          <span className="text-xs text-muted-foreground">
+                            {formatDistanceToNow(new Date(review.created_at), {
+                              addSuffix: true,
+                              locale: fr
+                            })}
+                          </span>
+                        </div>
                       </div>
+                      <p className="mt-2 text-sm">{review.comment}</p>
                     </div>
-                  </motion.div>
-                );
-              })}
+                  </div>
+                </motion.div>
+              ))}
             </motion.div>
           </AnimatePresence>
         )}

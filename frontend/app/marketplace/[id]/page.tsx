@@ -23,6 +23,7 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
   const [isLoading, setIsLoading] = useState(true);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isOrderFormOpen, setIsOrderFormOpen] = useState(false);
+  const [showReviewForm, setShowReviewForm] = useState(false);
   const [showMessageDialog, setShowMessageDialog] = useState(false);
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
@@ -330,17 +331,46 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
 
       <Separator className="my-12" />
       
+      {/* Add review button */}
+      {user && user.id !== (typeof listing.seller === 'object' ? listing.seller.id : listing.seller) && (
+        <div className="mt-6">
+          <Button
+            onClick={() => setShowReviewForm(true)}
+            variant="outline"
+            className="w-full sm:w-auto"
+          >
+            <Star className="w-4 h-4 mr-2" />
+            Laisser un avis
+          </Button>
+        </div>
+      )}
+
+      {/* Reviews section */}
       <div className="mt-12">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold">Avis sur le vendeur</h2>
+          <h2 className="text-xl font-bold">Avis sur l'annonce</h2>
         </div>
         
         <ReviewList 
-          userId={typeof listing.seller === 'object' ? listing.seller.id : listing.seller}
+          listingId={listing.id}
           title=""
         />
       </div>
 
+      {/* Review form dialog */}
+      <CreateReviewForm
+        listingId={listing.id}
+        listingTitle={listing.title}
+        open={showReviewForm}
+        onOpenChange={setShowReviewForm}
+        onReviewSubmitted={() => {
+          setShowReviewForm(false);
+          // Refresh the listing to show the new review
+          fetchListing();
+        }}
+      />
+
+      {/* Message dialog */}
       <MessageDialog
         open={showMessageDialog}
         onOpenChange={setShowMessageDialog}

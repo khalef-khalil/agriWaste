@@ -527,18 +527,15 @@ export const ordersApi = {
 // Types for Reviews and Messages
 export interface Review {
   id: number;
-  order: number;
-  reviewer: number | UserProfile;
-  reviewer_details?: UserProfile;
-  recipient: number | UserProfile;
-  recipient_details?: UserProfile;
+  listing_id: number;
+  reviewer_username: string;
   rating: number;
   comment: string;
   created_at: string;
 }
 
 export interface CreateReviewRequest {
-  order: number;
+  listing_id: number;
   rating: number;
   comment: string;
 }
@@ -575,17 +572,6 @@ export const reviewsApi = {
       return response.data;
     } catch (error) {
       console.error('Error creating review:', error);
-      throw error;
-    }
-  },
-
-  // Get reviews for a user
-  getUserReviews: async (userId: number): Promise<Review[]> => {
-    try {
-      const response = await api.get<PaginatedResponse<Review>>(`/api/marketplace/reviews/?recipient=${userId}`);
-      return response.data.results;
-    } catch (error) {
-      console.error('Error fetching user reviews:', error);
       throw error;
     }
   },
