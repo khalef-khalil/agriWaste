@@ -247,7 +247,7 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
                   onClick={() => {
                     if (!user) {
                       toast.error("Veuillez vous connecter pour contacter le vendeur");
-                      router.push('/auth/signin');
+                      router.push('/login');
                       return;
                     }
                     setShowMessageDialog(true);
@@ -263,7 +263,7 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
                   onClick={() => {
                     if (!user) {
                       toast.error("Veuillez vous connecter pour passer une commande");
-                      router.push('/auth/signin');
+                      router.push('/login');
                       return;
                     }
                     setIsOrderFormOpen(true);
@@ -279,7 +279,7 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
                   onClick={() => {
                     if (!user) {
                       toast.error("Veuillez vous connecter pour laisser un avis");
-                      router.push('/auth/signin');
+                      router.push('/login');
                       return;
                     }
                     
@@ -331,20 +331,6 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
 
       <Separator className="my-12" />
       
-      {/* Add review button */}
-      {user && user.id !== (typeof listing.seller === 'object' ? listing.seller.id : listing.seller) && (
-        <div className="mt-6">
-          <Button
-            onClick={() => setShowReviewForm(true)}
-            variant="outline"
-            className="w-full sm:w-auto"
-          >
-            <Star className="w-4 h-4 mr-2" />
-            Laisser un avis
-          </Button>
-        </div>
-      )}
-
       {/* Reviews section */}
       <div className="mt-12">
         <div className="flex items-center justify-between mb-6">
