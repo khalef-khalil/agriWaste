@@ -21,7 +21,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { marketplaceApi, UserProfile, Listing } from "@/lib/api";
+import { messageApi, UserProfile, Listing } from "@/lib/api";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
@@ -58,39 +58,16 @@ export default function ComposeMessageDialog({
   const fetchUsers = async () => {
     try {
       setIsFetchingUsers(true);
-      
-      // Use mock data by default since the endpoint doesn't exist yet
-      const mockUsers = [
-        { id: 1, username: "farmer1", first_name: "Jean", last_name: "Dupont", user_type: "farmer", email: "", profile_image: "" },
-        { id: 2, username: "researcher1", first_name: "Marie", last_name: "Curie", user_type: "researcher", email: "", profile_image: "" },
-        { id: 3, username: "startup1", first_name: "Eco", last_name: "Solutions", user_type: "startup", email: "", profile_image: "" }
-      ];
-      
-      // Only try to fetch if not in development mode
-      if (process.env.NODE_ENV !== 'development') {
-        try {
-          const response = await fetch("/api/users/message-recipients");
-          if (response.ok) {
-            const data = await response.json();
-            setUsers(data);
-            return;
-          }
-        } catch (error) {
-          console.error("API endpoint not available, using mock data:", error);
-        }
+      const response = await fetch("/api/users");
+      if (response.ok) {
+        const data = await response.json();
+        setUsers(data.results || []);
+      } else {
+        throw new Error("Failed to fetch users");
       }
-      
-      // Use mock data as fallback
-      setUsers(mockUsers);
-      
     } catch (error) {
       console.error("Failed to fetch users:", error);
-      // Default mock data
-      setUsers([
-        { id: 1, username: "farmer1", first_name: "Jean", last_name: "Dupont", user_type: "farmer", email: "", profile_image: "" },
-        { id: 2, username: "researcher1", first_name: "Marie", last_name: "Curie", user_type: "researcher", email: "", profile_image: "" },
-        { id: 3, username: "startup1", first_name: "Eco", last_name: "Solutions", user_type: "startup", email: "", profile_image: "" }
-      ]);
+      toast.error("Erreur lors du chargement des utilisateurs");
     } finally {
       setIsFetchingUsers(false);
     }
@@ -100,11 +77,16 @@ export default function ComposeMessageDialog({
   const fetchListings = async () => {
     try {
       setIsFetchingListings(true);
-      const listings = await marketplaceApi.getActiveListings();
-      setListings(listings);
+      const response = await fetch("/api/marketplace/listings/active");
+      if (response.ok) {
+        const data = await response.json();
+        setListings(data.results || []);
+      } else {
+        throw new Error("Failed to fetch listings");
+      }
     } catch (error) {
       console.error("Failed to fetch listings:", error);
-      setListings([]);
+      toast.error("Erreur lors du chargement des annonces");
     } finally {
       setIsFetchingListings(false);
     }
@@ -143,20 +125,24 @@ export default function ComposeMessageDialog({
       setIsLoading(true);
       
       const messageData = {
-        recipient: parseInt(recipientId),
+        receiver: parseInt(recipientId),
         subject: subject.trim(),
         content: content.trim(),
         ...(listingId && listingId !== "none" ? { listing: parseInt(listingId) } : {})
       };
       
-      const response = await marketplaceApi.createMessage(messageData);
+      await messageApi.createMessage(messageData);
       
       toast.success("Message envoyé avec succès");
       onSent();
       onOpenChange(false);
       
-      // Optionally navigate to the message thread
-      // router.push(`/dashboard/messages/${response.id}`);
+      // Clear form
+      setSubject("");
+      setContent("");
+      setRecipientId("");
+      setListingId("");
+      
     } catch (error) {
       console.error("Failed to send message:", error);
       toast.error("Échec de l'envoi du message. Veuillez réessayer.");
@@ -265,9 +251,9 @@ export default function ComposeMessageDialog({
               id="subject"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              placeholder="Entrez le sujet du message"
-              className="mt-1"
+              placeholder="Sujet du message"
               disabled={isLoading}
+              className="mt-1"
             />
           </motion.div>
 
@@ -279,14 +265,14 @@ export default function ComposeMessageDialog({
               id="content"
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="Saisissez votre message ici..."
-              className="min-h-[150px] mt-1"
+              placeholder="Écrivez votre message ici..."
               disabled={isLoading}
+              className="mt-1 min-h-[100px]"
             />
           </motion.div>
         </motion.div>
 
-        <DialogFooter className="flex space-x-2 mt-4">
+        <DialogFooter>
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
@@ -296,7 +282,7 @@ export default function ComposeMessageDialog({
           </Button>
           <Button
             onClick={handleSend}
-            disabled={isLoading || !recipientId || !subject.trim() || !content.trim()}
+            disabled={isLoading}
           >
             {isLoading ? (
               <>
@@ -304,7 +290,7 @@ export default function ComposeMessageDialog({
                 Envoi...
               </>
             ) : (
-              "Envoyer"
+              'Envoyer'
             )}
           </Button>
         </DialogFooter>

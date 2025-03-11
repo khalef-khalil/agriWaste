@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { marketplaceApi, Message, UserProfile } from '@/lib/api';
+import { messageApi, Message, UserProfile } from '@/lib/api';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Skeleton } from '@/components/ui/skeleton';
 import ComposeMessageDialog from '@/components/messages/compose-message-dialog';
 import { AuthGuard } from '@/components/auth/AuthGuard';
+import { toast } from 'sonner';
 
 export default function MessagesPage() {
   const router = useRouter();
@@ -36,13 +37,16 @@ export default function MessagesPage() {
   const fetchMessages = async () => {
     try {
       setIsLoading(true);
-      const allMessages = await marketplaceApi.getMyMessages();
-      const unread = await marketplaceApi.getUnreadMessages();
+      const [allMessages, unread] = await Promise.all([
+        messageApi.getMyMessages(),
+        messageApi.getUnreadMessages()
+      ]);
       
       setMessages(allMessages);
       setUnreadMessages(unread);
     } catch (error) {
       console.error('Error fetching messages:', error);
+      toast.error('Erreur lors du chargement des messages');
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -76,8 +80,26 @@ export default function MessagesPage() {
     setRefreshCount(prev => prev + 1);
   };
 
-  const handleMessageClick = (messageId: number) => {
-    router.push(`/dashboard/messages/${messageId}`);
+  const handleMessageClick = async (messageId: number) => {
+    try {
+      // Mark message as read if it's unread
+      const message = messages.find(m => m.id === messageId);
+      if (message && !message.read) {
+        await messageApi.markAsRead(messageId);
+        // Update messages list to reflect the change
+        setMessages(messages.map(m => 
+          m.id === messageId ? { ...m, read: true } : m
+        ));
+        // Update unread messages count
+        setUnreadMessages(unreadMessages.filter(m => m.id !== messageId));
+      }
+      
+      // Navigate to message detail
+      router.push(`/dashboard/messages/${messageId}`);
+    } catch (error) {
+      console.error('Error marking message as read:', error);
+      toast.error('Erreur lors du marquage du message comme lu');
+    }
   };
 
   const getInitials = (user?: UserProfile | number) => {
@@ -92,11 +114,17 @@ export default function MessagesPage() {
     return null;
   };
 
-  // Group messages by sender/recipient for threaded view
+  // Group messages by sender/receiver for threaded view
   const groupedMessages = messages.reduce<Record<string, Message[]>>((acc, message) => {
-    // Determine the other party (not the current user)
-    const otherParty = typeof message.sender === 'object' ? message.sender.id : message.sender;
-    const otherPartyId = otherParty.toString();
+    // For inbox, only group messages where we are the receiver
+    const isInbox = typeof message.receiver === 'object' && typeof message.sender === 'object' && message.receiver.id === message.receiver.id;
+    if (!isInbox) {
+      // Skip messages we sent for inbox view
+      return acc;
+    }
+    
+    // Use sender ID as the group key for inbox messages
+    const otherPartyId = message.sender.id.toString();
     
     if (!acc[otherPartyId]) {
       acc[otherPartyId] = [];
@@ -113,22 +141,29 @@ export default function MessagesPage() {
     return latestB - latestA;
   });
 
+  // Filter sent messages
+  const sentMessages = messages.filter(m => 
+    typeof m.sender === 'object' && 
+    typeof m.receiver === 'object' && 
+    m.sender.id === m.sender.id
+  );
+
   const getOtherPartyDetails = (messages: Message[]) => {
     if (messages.length === 0) return null;
     
     const message = messages[0];
-    // Determine if the other party is the sender or recipient
+    // Determine if the other party is the sender or receiver
     const isSentByMe = typeof message.sender === 'object' && message.sender && 'username' in message.sender;
     
     if (isSentByMe) {
-      return typeof message.recipient === 'object' ? message.recipient : message.recipient_details;
+      return typeof message.receiver === 'object' ? message.receiver : null;
     } else {
-      return typeof message.sender === 'object' ? message.sender : message.sender_details;
+      return typeof message.sender === 'object' ? message.sender : null;
     }
   };
 
   const countUnreadInGroup = (messages: Message[]) => {
-    return messages.filter(m => !m.is_read).length;
+    return messages.filter(m => !m.read).length;
   };
 
   const messageVariants = {
@@ -248,34 +283,43 @@ export default function MessagesPage() {
                                   />
                                   <AvatarFallback>{getInitials(otherParty)}</AvatarFallback>
                                 </Avatar>
+                                
                                 <div className="flex-1 min-w-0">
-                                  <div className="flex justify-between items-start">
-                                    <h4 className="font-medium truncate">
-                                      {otherParty?.first_name} {otherParty?.last_name}
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-2">
+                                      <span className="font-medium">
+                                        {otherParty ? `${otherParty.first_name} ${otherParty.last_name}` : 'Utilisateur inconnu'}
+                                      </span>
                                       {unreadCount > 0 && (
                                         <Badge variant="destructive" className="ml-2">
-                                          {unreadCount} nouveau{unreadCount > 1 ? 'x' : ''}
+                                          {unreadCount} non lu{unreadCount > 1 ? 's' : ''}
                                         </Badge>
                                       )}
-                                    </h4>
-                                    <span className="text-xs text-muted-foreground whitespace-nowrap ml-2">
+                                    </div>
+                                    <span className="text-sm text-muted-foreground">
                                       {formatDistanceToNow(new Date(latestMessage.created_at), { 
                                         addSuffix: true,
-                                        locale: fr
+                                        locale: fr 
                                       })}
                                     </span>
                                   </div>
-                                  <p className="text-sm text-muted-foreground truncate">{latestMessage.subject}</p>
-                                  <div className="flex items-center mt-1">
-                                    {getBadgeText(latestMessage) && (
-                                      <Badge variant="outline" className="text-xs mr-2">
-                                        {getBadgeText(latestMessage)}
-                                      </Badge>
-                                    )}
-                                    <p className="text-xs truncate flex-1">{latestMessage.content}</p>
-                                  </div>
+                                  
+                                  <h4 className="text-sm font-medium truncate">
+                                    {latestMessage.subject}
+                                  </h4>
+                                  
+                                  <p className="text-sm text-muted-foreground truncate">
+                                    {latestMessage.content}
+                                  </p>
+                                  
+                                  {latestMessage.listing_details && (
+                                    <Badge variant="secondary" className="mt-1">
+                                      {getBadgeText(latestMessage)}
+                                    </Badge>
+                                  )}
                                 </div>
-                                <ChevronRight className="h-5 w-5 text-muted-foreground ml-2" />
+                                
+                                <ChevronRight className="h-5 w-5 text-muted-foreground ml-4" />
                               </motion.div>
                             );
                           })}
@@ -288,33 +332,108 @@ export default function MessagesPage() {
 
               <TabsContent value="sent" className="mt-0">
                 <Card className="border-t-0 rounded-t-none">
-                  <CardContent className="p-4">
-                    <p className="text-center text-muted-foreground my-8">
-                      Fonctionnalité en cours de développement
-                    </p>
+                  <CardContent className="p-0">
+                    {isLoading ? (
+                      <div className="space-y-4 p-4">
+                        {[1, 2, 3].map((i) => (
+                          <div key={i} className="flex gap-4 items-center">
+                            <Skeleton className="h-12 w-12 rounded-full" />
+                            <div className="space-y-2 flex-1">
+                              <Skeleton className="h-4 w-[250px]" />
+                              <Skeleton className="h-4 w-full" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : sentMessages.length === 0 ? (
+                      <div className="p-8 text-center">
+                        <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
+                          <Send className="h-6 w-6 text-muted-foreground" />
+                        </div>
+                        <h3 className="text-lg font-medium">Pas de messages envoyés</h3>
+                        <p className="text-muted-foreground mt-2">
+                          Vous n'avez pas encore envoyé de messages.
+                        </p>
+                      </div>
+                    ) : (
+                      <AnimatePresence>
+                        <div className="divide-y">
+                          {sentMessages
+                            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                            .map((message, index) => (
+                              <motion.div
+                                key={message.id}
+                                custom={index}
+                                initial="hidden"
+                                animate="visible"
+                                exit="exit"
+                                variants={messageVariants}
+                                className="flex items-center p-4 hover:bg-muted cursor-pointer transition-colors"
+                                onClick={() => handleMessageClick(message.id)}
+                              >
+                                <Avatar className="h-12 w-12 mr-4">
+                                  <AvatarImage 
+                                    src={typeof message.receiver === 'object' ? message.receiver.profile_image : ''}
+                                    alt={typeof message.receiver === 'object' ? message.receiver.username : 'User'}
+                                  />
+                                  <AvatarFallback>
+                                    {getInitials(typeof message.receiver === 'object' ? message.receiver : undefined)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-medium">
+                                      {typeof message.receiver === 'object' 
+                                        ? `${message.receiver.first_name} ${message.receiver.last_name}`
+                                        : 'Utilisateur inconnu'
+                                      }
+                                    </span>
+                                    <span className="text-sm text-muted-foreground">
+                                      {formatDistanceToNow(new Date(message.created_at), { 
+                                        addSuffix: true,
+                                        locale: fr 
+                                      })}
+                                    </span>
+                                  </div>
+                                  
+                                  <h4 className="text-sm font-medium truncate">
+                                    {message.subject}
+                                  </h4>
+                                  
+                                  <p className="text-sm text-muted-foreground truncate">
+                                    {message.content}
+                                  </p>
+                                  
+                                  {message.listing_details && (
+                                    <Badge variant="secondary" className="mt-1">
+                                      {getBadgeText(message)}
+                                    </Badge>
+                                  )}
+                                </div>
+                                
+                                <ChevronRight className="h-5 w-5 text-muted-foreground ml-4" />
+                              </motion.div>
+                            ))}
+                        </div>
+                      </AnimatePresence>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
             </Tabs>
-
-            <ComposeMessageDialog
-              open={showComposeDialog}
-              onOpenChange={setShowComposeDialog}
-              onSent={() => {
-                setRefreshCount(prev => prev + 1);
-                
-                // Clear URL parameters after sending
-                if (searchParams.has('recipient')) {
-                  router.replace('/dashboard/messages');
-                }
-              }}
-              initialRecipientId={composeOptions.recipientId}
-              initialListingId={composeOptions.listingId}
-              initialSubject={composeOptions.subject}
-            />
           </div>
         </div>
         <Footer />
+
+        <ComposeMessageDialog
+          open={showComposeDialog}
+          onOpenChange={setShowComposeDialog}
+          onSent={handleRefresh}
+          initialRecipientId={composeOptions.recipientId}
+          initialListingId={composeOptions.listingId}
+          initialSubject={composeOptions.subject}
+        />
       </div>
     </AuthGuard>
   );

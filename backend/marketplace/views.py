@@ -328,7 +328,7 @@ class MessageViewSet(viewsets.ModelViewSet):
         message = self.get_object()
         
         # Only the receiver can mark a message as read
-        if message.receiver != request.user:
+        if message.receiver.id != request.user.id:
             return Response(
                 {"detail": "Only the receiver can mark a message as read"},
                 status=status.HTTP_403_FORBIDDEN

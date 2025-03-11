@@ -30,8 +30,8 @@ export default function MyListingsPage() {
   const fetchListings = async () => {
     try {
       setLoading(true)
-      const myListings = await marketplaceApi.getMyListings()
-      setListings(myListings)
+      const response = await marketplaceApi.getMyListings()
+      setListings(response.results)
     } catch (error) {
       toast.error('Échec du chargement de vos annonces')
       console.error(error)
