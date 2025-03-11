@@ -260,47 +260,37 @@ export const marketplaceApi = {
   },
 
   // Update a listing
-  updateListing: async (id: number, listingData: Partial<Listing>): Promise<Listing> => {
+  updateListing: async (id: number, listingData: Partial<Listing> & {seller?: number}): Promise<Listing> => {
     console.log('Updating listing with data:', listingData);
     
-    // Create a formatted data object similar to create to ensure consistency
-    // For updates, we need to include the seller ID, not remove it
-    const formattedData: any = {
-      // Add all fields from the input data
-      ...listingData,
-    };
+    // Create a clean formatted data object
+    const formattedData: any = {};
     
-    // Remove fields that shouldn't be directly updated, but keep seller ID if available
-    if (listingData.seller && typeof listingData.seller === 'object' && 'id' in listingData.seller) {
-      // Include only the seller ID, not the full object
-      formattedData.seller = listingData.seller.id;
-    } else if (!formattedData.seller) {
-      // If no seller provided, set a dummy one that will be overridden by the server
-      formattedData.seller = 1;
-    }
+    // Explicitly copy fields we know should be included
+    const fieldsToInclude = [
+      'title', 'description', 'price', 'unit', 'currency', 'quantity',
+      'waste_type', 'location', 'country', 'available_from', 'status',
+      'available_until', 'seller'
+    ];
     
-    // Handle waste_type properly - if it's an object extract the ID
+    // Only include fields that are present and non-undefined
+    fieldsToInclude.forEach(field => {
+      if (field in listingData && listingData[field as keyof typeof listingData] !== undefined) {
+        formattedData[field] = listingData[field as keyof typeof listingData];
+      }
+    });
+    
+    // Make sure waste_type is a number, not an object
     if (formattedData.waste_type && typeof formattedData.waste_type === 'object' && 'id' in formattedData.waste_type) {
       formattedData.waste_type = formattedData.waste_type.id;
     }
     
-    // Clean up response fields
-    delete formattedData.waste_type_name;
-    delete formattedData.created_at;
-    delete formattedData.updated_at;
-    delete formattedData.images;
-    delete formattedData.is_active; // Remove is_active as we use status instead
-    
-    // Ensure waste_type is properly included
-    if (!formattedData.waste_type && formattedData.waste_type !== 0) {
-      console.warn('No waste_type provided for update, this will likely cause an error');
+    // Ensure seller is included
+    if (!formattedData.seller) {
+      console.error('No seller ID provided for update. This will likely cause the backend to change ownership.');
     }
     
     // Format dates properly if present
-    if (formattedData.available_from) {
-      formattedData.available_from = formattedData.available_from;
-    }
-    
     if (formattedData.available_until === '') {
       // Set to null if empty string (Django handles null for optional date)
       formattedData.available_until = null;

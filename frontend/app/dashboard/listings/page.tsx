@@ -11,10 +11,20 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Badge } from '@/components/ui/badge'
 import ImageWithFallback from '@/components/ui/image-with-fallback'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 export default function MyListingsPage() {
   const [listings, setListings] = useState<Listing[]>([])
   const [loading, setLoading] = useState(true)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [listingToDelete, setListingToDelete] = useState<number | null>(null)
   const router = useRouter()
 
   const fetchListings = async () => {
@@ -34,16 +44,22 @@ export default function MyListingsPage() {
     fetchListings()
   }, [])
 
+  const openDeleteDialog = (id: number) => {
+    setListingToDelete(id);
+    setDeleteDialogOpen(true);
+  }
+
   const handleDeleteListing = async (id: number) => {
-    if (confirm('Êtes-vous sûr de vouloir supprimer cette annonce ?')) {
-      try {
-        await marketplaceApi.deleteListing(id)
-        setListings(listings.filter(listing => listing.id !== id))
-        toast.success('Annonce supprimée avec succès')
-      } catch (error) {
-        toast.error('Échec de la suppression de l\'annonce')
-        console.error(error)
-      }
+    try {
+      await marketplaceApi.deleteListing(id)
+      setListings(listings.filter(listing => listing.id !== id))
+      toast.success('Annonce supprimée avec succès')
+    } catch (error) {
+      toast.error('Échec de la suppression de l\'annonce')
+      console.error(error)
+    } finally {
+      setDeleteDialogOpen(false)
+      setListingToDelete(null)
     }
   }
 
@@ -248,7 +264,7 @@ export default function MyListingsPage() {
                       <Button 
                         variant="destructive" 
                         size="icon" 
-                        onClick={() => handleDeleteListing(listing.id)}
+                        onClick={() => openDeleteDialog(listing.id)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -260,6 +276,32 @@ export default function MyListingsPage() {
           </AnimatePresence>
         </motion.div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmer la suppression</DialogTitle>
+            <DialogDescription>
+              Êtes-vous sûr de vouloir supprimer cette annonce ? Cette action ne peut pas être annulée.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex space-x-2 pt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setDeleteDialogOpen(false)}
+            >
+              Annuler
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={() => listingToDelete && handleDeleteListing(listingToDelete)}
+            >
+              Supprimer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 } 

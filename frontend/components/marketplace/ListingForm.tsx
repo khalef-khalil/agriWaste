@@ -267,19 +267,29 @@ export default function ListingForm({ initialData, isEdit = false }: ListingForm
       
       setSubmitting(true);
       
+      // Create a copy of the data for submission, with an any type to allow adding seller
+      const submissionData: any = { ...data };
+      
       // Create a debug copy of the data to see exactly what we're sending
-      const debugData = { ...data };
-      console.log('Form data being submitted:', debugData);
+      console.log('Form data being submitted:', submissionData);
       
       if (isEdit && initialData) {
         try {
           // Add more detailed logging for edit mode
           console.log('Editing listing with ID:', initialData.id);
           console.log('Current listing data:', initialData);
-          console.log('Update data being sent:', data);
           
-          // Update listing first
-          const updatedListing = await marketplaceApi.updateListing(initialData.id, data);
+          // Explicitly include the original seller ID for edit
+          if (initialData.seller && typeof initialData.seller === 'object' && 'id' in initialData.seller) {
+            // No need for @ts-ignore with 'any' type for submissionData
+            submissionData.seller = initialData.seller.id;
+            console.log('Including original seller ID:', submissionData.seller);
+          }
+          
+          console.log('Update data being sent:', submissionData);
+          
+          // Update listing with modified data including seller ID
+          const updatedListing = await marketplaceApi.updateListing(initialData.id, submissionData);
           console.log('Update successful, received:', updatedListing);
           
           // Handle image uploads for existing listing
