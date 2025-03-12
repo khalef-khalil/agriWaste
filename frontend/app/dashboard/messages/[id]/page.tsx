@@ -114,11 +114,10 @@ export default function MessageDetailPage({ params }: { params: { id: string } }
         : message.sender;
       
       const messageData = {
-        recipient: recipientId,
+        receiver: recipientId,
         subject: `Re: ${message.subject}`,
         content: replyContent.trim(),
-        ...(message.listing ? { listing: typeof message.listing === 'object' ? message.listing.id : message.listing } : {}),
-        parent_message: message.id
+        ...(message.listing ? { listing: typeof message.listing === 'object' ? message.listing.id : message.listing } : {})
       };
       
       await marketplaceApi.createMessage(messageData);

@@ -42,6 +42,9 @@ export default function MessagesPage() {
         messageApi.getUnreadMessages()
       ]);
       
+      console.log('Fetched messages:', allMessages);
+      console.log('Unread messages:', unread);
+      
       setMessages(allMessages);
       setUnreadMessages(unread);
     } catch (error) {
@@ -102,8 +105,10 @@ export default function MessagesPage() {
     }
   };
 
-  const getInitials = (user?: UserProfile | number) => {
-    if (!user || typeof user === 'number') return '??';
+  const getInitials = (user?: UserProfile | number | string) => {
+    if (!user) return '??';
+    if (typeof user === 'string') return user.substring(0, 2).toUpperCase();
+    if (typeof user === 'number') return '??';
     return `${(user.first_name?.[0] || '').toUpperCase()}${(user.last_name?.[0] || '').toUpperCase()}`;
   };
 
@@ -116,15 +121,15 @@ export default function MessagesPage() {
 
   // Group messages by sender/receiver for threaded view
   const groupedMessages = messages.reduce<Record<string, Message[]>>((acc, message) => {
-    // For inbox, only group messages where we are the receiver
-    const isInbox = typeof message.receiver === 'object' && typeof message.sender === 'object' && message.receiver.id === message.receiver.id;
+    // For inbox, group messages where we are the receiver
+    const isInbox = message.receiver_username === 'bekay'; // Current user is 'bekay'
     if (!isInbox) {
       // Skip messages we sent for inbox view
       return acc;
     }
     
-    // Use sender ID as the group key for inbox messages
-    const otherPartyId = message.sender.id.toString();
+    // Use sender username as the group key for inbox messages
+    const otherPartyId = message.sender_username;
     
     if (!acc[otherPartyId]) {
       acc[otherPartyId] = [];
@@ -142,24 +147,19 @@ export default function MessagesPage() {
   });
 
   // Filter sent messages
-  const sentMessages = messages.filter(m => 
-    typeof m.sender === 'object' && 
-    typeof m.receiver === 'object' && 
-    m.sender.id === m.sender.id
-  );
+  const sentMessages = messages.filter(m => m.sender_username === 'bekay'); // Current user is 'bekay'
 
   const getOtherPartyDetails = (messages: Message[]) => {
     if (messages.length === 0) return null;
     
     const message = messages[0];
-    // Determine if the other party is the sender or receiver
-    const isSentByMe = typeof message.sender === 'object' && message.sender && 'username' in message.sender;
-    
-    if (isSentByMe) {
-      return typeof message.receiver === 'object' ? message.receiver : null;
-    } else {
-      return typeof message.sender === 'object' ? message.sender : null;
-    }
+    // Return a simplified user object based on username
+    return {
+      username: message.sender_username,
+      first_name: message.sender_username,
+      last_name: '',
+      profile_image: ''
+    };
   };
 
   const countUnreadInGroup = (messages: Message[]) => {
