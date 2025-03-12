@@ -47,7 +47,6 @@ export function Footer() {
             <h3 className="text-base font-semibold mb-4">Ressources</h3>
             <ul className="space-y-2">
               <FooterLink href="/learn">Apprendre</FooterLink>
-              <FooterLink href="/blog">Blog</FooterLink>
               <FooterLink href="/faq">FAQ</FooterLink>
               <FooterLink href="/contact">Contactez-nous</FooterLink>
             </ul>
